@@ -1,0 +1,11 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.DS_Store
+.env*.local
+
+# editor cruft
+*.swp
+*.swo
+*~
