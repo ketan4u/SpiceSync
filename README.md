@@ -25,6 +25,31 @@ it is not connected instead of silently dropping signups.
 Apply `supabase/migrations/0001_waitlist.sql` in the Supabase SQL Editor before
 expecting signups to store.
 
+## Branches
+
+**`develop` is the working branch — branch from it, and open PRs into it.**
+`main` is the production branch and only moves by merging `develop`; Vercel
+deploys `main` to the live site and gives every other branch its own preview URL.
+
+```bash
+git checkout develop
+git pull
+git checkout -b food/add-bengali-dishes    # or fix/…, quiz/…
+# …work…
+npm run verify                             # must be 42/42 before you push
+git push -u origin HEAD                    # then open a PR into develop
+```
+
+Keep branches small enough to review in one sitting. A PR that renames things
+*and* changes the estimator is one nobody can check properly — and the estimator
+is the part where a subtle change silently degrades everyone's results rather
+than throwing an error.
+
+Two things that must not reach `main` without a second look: any change to the
+diet classification in the catalog (a vegan being shown meat is the worst bug
+this product can ship), and any change to how axis estimates are transformed
+(see the order-independence note below).
+
 ## Verifying
 
 ```bash
