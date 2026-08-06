@@ -1,4 +1,4 @@
-# Fumble
+# SpiceSync
 
 A dating app for India, built around food — and, underneath that, around a
 psychological match. The original brief is in [`docs/brief.md`](docs/brief.md).

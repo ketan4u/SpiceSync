@@ -1,4 +1,4 @@
--- Fumble — pre-launch waitlist.
+-- SpiceSync — pre-launch waitlist.
 --
 -- The whole point of a pre-signup quiz is that people arrive already scored, so
 -- this stores the taste vector alongside the email. On launch day the Bangalore

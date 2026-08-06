@@ -1,7 +1,7 @@
 import type { DietBand, FoodItem, ItemDiet } from './types.ts';
 
 /**
- * The Fumble food catalog.
+ * The SpiceSync food catalog.
  *
  * Every item is tagged along the axes the quiz measures, so the quiz builds its
  * own pairs from tags rather than from a hand-authored bracket. That means:

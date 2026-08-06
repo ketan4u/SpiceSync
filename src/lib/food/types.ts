@@ -1,5 +1,5 @@
 /**
- * Fumble — Section 2 (food identity) type definitions.
+ * SpiceSync — Section 2 (food identity) type definitions.
  *
  * The quiz surface is exactly as specced in the brief: two photos, tap one,
  * 6-8 rounds. What changed is the model underneath. Instead of king-of-the-hill

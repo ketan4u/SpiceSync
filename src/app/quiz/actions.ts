@@ -41,7 +41,7 @@ export async function joinWaitlist(payload: WaitlistPayload): Promise<WaitlistRe
   }
 
   // Validate against the same list the form offered. Which city a signup came
-  // from decides where Fumble opens, so this column has to stay clean.
+  // from decides where SpiceSync opens, so this column has to stay clean.
   if (!isKnownCity(payload.city)) {
     return { ok: false, reason: 'invalid_city' };
   }

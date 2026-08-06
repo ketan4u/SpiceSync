@@ -13,7 +13,7 @@ type Params = { searchParams: Promise<{ l?: string; e?: string; d?: string }> };
 
 export async function generateMetadata({ searchParams }: Params): Promise<Metadata> {
   const { l = 'Something delicious', e = '🍽️', d = '' } = await searchParams;
-  const title = `I'm "${l}" on Fumble`;
+  const title = `I'm "${l}" on SpiceSync`;
   const og = `/api/og?l=${encodeURIComponent(l)}&e=${encodeURIComponent(e)}`;
   return {
     title,
@@ -28,7 +28,7 @@ export default async function SharedResult({ searchParams }: Params) {
   return (
     <main className="shell">
       <Link href="/" className="wordmark">
-        <span aria-hidden>🍴</span> Fumble
+        <span aria-hidden>🌶️</span> SpiceSync
       </Link>
       <div className="spacer" />
       <p className="step-label">Their food identity</p>

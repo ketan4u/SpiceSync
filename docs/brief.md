@@ -1,4 +1,4 @@
-Fumble:
+SpiceSync:
 
 A dating app for India from India, centered around a thing that all Indians love i.e. Food. 
 The goal is to find a person's psychological match.

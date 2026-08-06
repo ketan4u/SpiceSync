@@ -351,10 +351,10 @@ function Result({ outcome, onRestart }: { outcome: Outcome; onRestart: () => voi
   }, [outcome]);
 
   const share = async () => {
-    const text = `I'm "${outcome.label}" on Fumble. What are you?`;
+    const text = `I'm "${outcome.label}" on SpiceSync. What are you?`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Fumble', text, url: shareUrl });
+        await navigator.share({ title: 'SpiceSync', text, url: shareUrl });
         return;
       } catch {
         /* user dismissed the sheet — fall through to copy */
@@ -401,7 +401,7 @@ function Result({ outcome, onRestart }: { outcome: Outcome; onRestart: () => voi
       </div>
 
       <p className="note">
-        This is where matching starts, not ends. Fumble weighs how you eat alongside how you handle
+        This is where matching starts, not ends. SpiceSync weighs how you eat alongside how you handle
         a disagreement, how fast you like things to move, and what you will not compromise on — and
         it tells you which of those you actually share with someone.
       </p>

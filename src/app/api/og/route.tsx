@@ -37,7 +37,7 @@ export function GET(request: Request) {
           {label}
         </div>
         <div style={{ fontSize: 30, color: '#9a8a80', marginTop: 30 }}>
-          my food identity on Fumble
+          my food identity on SpiceSync
         </div>
       </div>
     ),

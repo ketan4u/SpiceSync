@@ -1,6 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#d9480f"/>
-  <path d="M22 14v16a6 6 0 0 0 6 6v14a3 3 0 0 0 6 0V36a6 6 0 0 0 6-6V14"
-        stroke="#fff" stroke-width="4.5" stroke-linecap="round" fill="none"/>
-  <path d="M28 14v12M36 14v12" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Stem -->
+  <path d="M33 19c-1-5 2-8 7-8" stroke="#fff" stroke-width="4.5"
+        stroke-linecap="round" fill="none"/>
+  <!-- Chilli body: bold silhouette so it survives a 16px favicon -->
+  <path d="M33 17c7 0 12 6 12 14 0 12-10 22-20 24-2.2.4-3.4-2-1.7-3.4
+           C30 46 35 38 35 30c0-6-1-10-4-12z" fill="#fff"/>
 </svg>

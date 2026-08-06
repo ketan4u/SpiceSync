@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Fumble — find your food identity',
+  title: 'SpiceSync — find your food identity',
   description:
     'A dating app for India, built around the one thing we all have opinions about. Take the 90-second food quiz.',
-  applicationName: 'Fumble',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Fumble' },
+  applicationName: 'SpiceSync',
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'SpiceSync' },
 };
 
 export const viewport: Viewport = {

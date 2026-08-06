@@ -1,5 +1,5 @@
 /**
- * Fumble — Section 3 question bank.
+ * SpiceSync — Section 3 question bank.
  *
  * Design brief was "thorough enough to be meaningful, light enough not to feel
  * daunting". Those pull against each other, so:
