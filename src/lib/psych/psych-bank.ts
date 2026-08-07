@@ -72,37 +72,43 @@ export interface TraitMeta {
   use: TraitUse;
   /** Weight within the psychological half of the match score. */
   weight: number;
-  /** Chip text at the low and high end, for the explainability layer. */
+  /** Describing ONE person: "takes it slow". Used on a profile. */
   lowChip: string;
   highChip: string;
+  /**
+   * Describing a PAIR: "both take it slow". English needs the plural verb, and
+   * reusing the singular phrasing produced "both dives in" on real output.
+   */
+  lowPair: string;
+  highPair: string;
 }
 
 export const TRAITS: Record<Trait, TraitMeta> = {
   // Lifestyle and values do the real work — these are the things couples
   // actually argue about.
-  pace: { use: 'similarity', weight: 1.0, lowChip: 'takes it slow', highChip: 'dives in' },
-  conflict_engagement: { use: 'similarity', weight: 1.0, lowChip: 'needs space in a fight', highChip: 'talks it out immediately' },
-  social_battery: { use: 'similarity', weight: 0.9, lowChip: 'quiet weekends', highChip: 'always out' },
-  family_closeness: { use: 'similarity', weight: 0.9, lowChip: 'keeps family at arm’s length', highChip: 'family is close by' },
-  night_owl: { use: 'similarity', weight: 0.7, lowChip: 'early riser', highChip: 'night owl' },
-  planning: { use: 'similarity', weight: 0.7, lowChip: 'wings it', highChip: 'plans everything' },
-  ambition_over_balance: { use: 'similarity', weight: 0.8, lowChip: 'protects their time', highChip: 'career first' },
-  spending: { use: 'similarity', weight: 0.6, lowChip: 'careful with money', highChip: 'spends freely' },
-  pda: { use: 'similarity', weight: 0.4, lowChip: 'private about it', highChip: 'affectionate in public' },
-  independence: { use: 'similarity', weight: 0.8, lowChip: 'likes doing things together', highChip: 'needs their own space' },
+  pace: { use: 'similarity', weight: 1.0, lowChip: 'takes it slow', highChip: 'dives in', lowPair: 'take it slow', highPair: 'dive in' },
+  conflict_engagement: { use: 'similarity', weight: 1.0, lowChip: 'needs space in a fight', highChip: 'talks it out immediately', lowPair: 'need space in a fight', highPair: 'talk things out immediately' },
+  social_battery: { use: 'similarity', weight: 0.9, lowChip: 'quiet weekends', highChip: 'always out', lowPair: 'like quiet weekends', highPair: 'are always out' },
+  family_closeness: { use: 'similarity', weight: 0.9, lowChip: 'keeps family at arm’s length', highChip: 'family is close by', lowPair: 'keep family at arm’s length', highPair: 'are close to family' },
+  night_owl: { use: 'similarity', weight: 0.7, lowChip: 'early riser', highChip: 'night owl', lowPair: 'are early risers', highPair: 'are night owls' },
+  planning: { use: 'similarity', weight: 0.7, lowChip: 'wings it', highChip: 'plans everything', lowPair: 'wing it', highPair: 'plan everything' },
+  ambition_over_balance: { use: 'similarity', weight: 0.8, lowChip: 'protects their time', highChip: 'career first', lowPair: 'protect their time', highPair: 'put career first' },
+  spending: { use: 'similarity', weight: 0.6, lowChip: 'careful with money', highChip: 'spends freely', lowPair: 'are careful with money', highPair: 'spend freely' },
+  pda: { use: 'similarity', weight: 0.4, lowChip: 'private about it', highChip: 'affectionate in public', lowPair: 'are private about it', highPair: 'are affectionate in public' },
+  independence: { use: 'similarity', weight: 0.8, lowChip: 'likes doing things together', highChip: 'needs their own space', lowPair: 'like doing things together', highPair: 'need their own space' },
 
   // Attachment is a combination effect, not a similarity one. Two secure people
   // do well; an anxious person with an avoidant one is the single most
   // documented bad pairing in this literature.
-  attachment_anxiety: { use: 'flag', weight: 1.0, lowChip: 'secure when apart', highChip: 'needs reassurance' },
-  attachment_avoidance: { use: 'flag', weight: 1.0, lowChip: 'comfortable getting close', highChip: 'guards their independence' },
+  attachment_anxiety: { use: 'flag', weight: 1.0, lowChip: 'secure when apart', highChip: 'needs reassurance', lowPair: 'are secure when apart', highPair: 'need reassurance' },
+  attachment_avoidance: { use: 'flag', weight: 1.0, lowChip: 'comfortable getting close', highChip: 'guards their independence', lowPair: 'are comfortable getting close', highPair: 'guard their independence' },
 
   // Big Five is weak at predicting satisfaction. Kept light, mostly for chips.
-  openness: { use: 'similarity', weight: 0.5, lowChip: 'sticks to what works', highChip: 'up for anything' },
-  conscientiousness: { use: 'similarity', weight: 0.5, lowChip: 'relaxed about structure', highChip: 'organised' },
-  extraversion: { use: 'context', weight: 0.3, lowChip: 'reserved', highChip: 'outgoing' },
-  agreeableness: { use: 'context', weight: 0.3, lowChip: 'blunt', highChip: 'accommodating' },
-  emotional_volatility: { use: 'context', weight: 0.3, lowChip: 'even-keeled', highChip: 'feels things intensely' },
+  openness: { use: 'similarity', weight: 0.5, lowChip: 'sticks to what works', highChip: 'up for anything', lowPair: 'stick to what works', highPair: 'are up for anything' },
+  conscientiousness: { use: 'similarity', weight: 0.5, lowChip: 'relaxed about structure', highChip: 'organised', lowPair: 'are relaxed about structure', highPair: 'are organised' },
+  extraversion: { use: 'context', weight: 0.3, lowChip: 'reserved', highChip: 'outgoing', lowPair: 'are reserved', highPair: 'are outgoing' },
+  agreeableness: { use: 'context', weight: 0.3, lowChip: 'blunt', highChip: 'accommodating', lowPair: 'are blunt', highPair: 'are accommodating' },
+  emotional_volatility: { use: 'context', weight: 0.3, lowChip: 'even-keeled', highChip: 'feels things intensely', lowPair: 'are even-keeled', highPair: 'feel things intensely' },
 };
 
 export interface PsychOption {

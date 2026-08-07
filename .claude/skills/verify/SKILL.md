@@ -1,14 +1,15 @@
 ---
 name: verify
-description: Run and interpret SpiceSync's verification suites. Use before committing changes to the quiz engine, the food catalog, the psych bank, or the quiz flow — and whenever a check fails and its meaning is not obvious. Explains what each of the 42 checks protects and what a failure actually indicates.
+description: Run and interpret SpiceSync's verification suites. Use before committing changes to the quiz engine, the food catalog, the psych bank, or the quiz flow — and whenever a check fails and its meaning is not obvious. Explains what each of the 65 checks protects and what a failure actually indicates.
 ---
 
 # Verifying SpiceSync
 
 ```bash
-npm run verify          # all three suites, 42 checks
+npm run verify          # all four suites, 65 checks
 npm run verify:quiz     # the estimator
 npm run verify:flow     # the user journey
+npm run verify:match    # the scorer
 npm run verify:psych    # the question bank
 ```
 
@@ -38,6 +39,21 @@ decorative.
 Every diet band completes 8 rounds · no dish shown twice · "Neither" does not
 corrupt a run · skipping the cuisine step still completes · abandoning after two
 taps still renders something · same seed reproduces.
+
+### `verify:match` — the scorer
+
+Gates are absolute and cannot be outweighed by a good score · `score(a,b)` equals
+`score(b,a)` · a twin outranks an opposite · two unanswered psych profiles score
+neutral rather than high · Explore is non-empty at pool sizes 4 through 200 ·
+a thin pool hides the number instead of inventing one · every surfaced match
+carries at least two chips · the distance opt-in behaves as the brief describes.
+
+**Score symmetry fails.** Something in the scorer reads one side only. Asymmetric
+preferences (diet tolerance) must be resolved with `min`, not by returning a
+per-viewer number.
+
+**Cold start fails.** The display blend or the pool thresholds changed. Explore
+being empty on launch day is the specific failure this suite exists to prevent.
 
 ### `verify:psych` — the question bank
 

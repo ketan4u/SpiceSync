@@ -36,7 +36,7 @@ git checkout develop
 git pull
 git checkout -b food/add-bengali-dishes    # or fix/…, quiz/…
 # …work…
-npm run verify                             # must be 42/42 before you push
+npm run verify                             # must be 65/65 before you push
 git push -u origin HEAD                    # then open a PR into develop
 ```
 
@@ -53,7 +53,7 @@ this product can ship), and any change to how axis estimates are transformed
 ## Verifying
 
 ```bash
-npm run verify        # 42 checks across three suites
+npm run verify        # 65 checks across four suites
 ```
 
 These run under `node --experimental-strip-types`, so there is no build step and
@@ -65,10 +65,10 @@ resolves them too, so the app and the harnesses share one set of modules.
 |---|---|
 | `verify:quiz` | The estimator. Taste recovery against 1000 synthetic users, the diet gate, order-independence, label distribution. |
 | `verify:flow` | The user journey. Every diet band completes, no dish repeats, "Neither" is safe, abandoning early still renders. |
+| `verify:match` | The scorer. Gates are absolute, score is symmetric, Explore is non-empty at any pool size, no score ships without chips. |
 | `verify:psych` | The question bank. Trait coverage proportional to weight, scoring behaviour, length budget. |
 
-Three of these exist because they each caught a real bug during development.
-Please keep them green.
+Each of these caught a real bug during development. Please keep them green.
 
 ## Layout
 
@@ -80,6 +80,9 @@ src/lib/food/          the Section 2 engine
   pool-calibration.ts    GENERATED — see below
   calibrate-pool.ts      regenerates the above
 src/lib/psych/         the Section 3 bank (12 core + 22 drip situational items)
+src/lib/match/         the scorer
+  score.ts               gates, weights, percentile ranking, why-chips
+  types.ts               MatchProfile — what the scorer needs about a person
 src/lib/cities.ts      waitlist cities, shared by the form and the server action
 src/app/quiz/          the public, pre-signup quiz
 src/app/r/             shareable result page (identity travels in the URL)
@@ -115,11 +118,25 @@ conflicts". Explained reasons are defensible; an oracle is not.
 
 **Rank by percentile, not an absolute threshold.** With a few hundred users
 almost nobody clears an absolute 70%, and Explore renders empty on launch day.
+The displayed number is a 50/50 blend of absolute compatibility and rank within
+the available pool: pure absolute empties the feed at launch, pure percentile
+crowns a "94% match" in a pool of four. Below 25 candidates no number is shown at
+all, and the banner additionally requires genuine compatibility so that "you
+should try to meet" is never earned by being the best of six.
+
+**Gates are not tradeable.** Gender, age, intent and dealbreakers are boolean and
+come before scoring. No amount of shared taste in food outweighs a dealbreaker,
+and `verify:match` asserts exactly that.
+
+**Silence is not agreement.** A trait neither person answered is skipped rather
+than treated as "0.5 vs 0.5, perfectly similar" — otherwise two empty profiles
+match at 90%.
 
 ## Status
 
-Built: the Section 2 engine, the Section 3 bank, the public quiz, the shareable
-result, the waitlist.
+Built: the Section 2 engine, the Section 3 bank, the match scorer, the public
+quiz, the shareable result, the waitlist. Live at https://spice-sync.vercel.app
 
-Not built: auth, onboarding, Explore, matching, chat, moderation. Dish art is
-emoji placeholder pending real photography.
+Not built: auth, onboarding, the Explore UI, chat, moderation. The scorer works
+but nothing feeds it real profiles yet. Dish art is emoji placeholder pending
+real photography.

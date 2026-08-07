@@ -6,9 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "verify": "npm run verify:quiz && npm run verify:flow && npm run verify:psych",
+    "verify": "npm run verify:quiz && npm run verify:flow && npm run verify:match && npm run verify:psych",
     "verify:quiz": "node --experimental-strip-types src/lib/food/verify-quiz.ts",
     "verify:flow": "node --experimental-strip-types src/lib/food/verify-flow.ts",
+    "verify:match": "node --experimental-strip-types src/lib/match/verify-match.ts",
     "verify:psych": "node --experimental-strip-types src/lib/psych/verify-psych.ts",
     "calibrate": "node --experimental-strip-types src/lib/food/calibrate-pool.ts > src/lib/food/pool-calibration.next.ts && mv src/lib/food/pool-calibration.next.ts src/lib/food/pool-calibration.ts"
   },
