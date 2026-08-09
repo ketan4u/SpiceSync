@@ -542,6 +542,32 @@ export interface PsychProfile {
 
 const QUESTIONS_BY_ID = new Map(PSYCH_BANK.map((q) => [q.id, q]));
 
+/**
+ * The next question worth asking.
+ *
+ * Core first, in order, because those twelve cover every high-weight trait
+ * between them. Only once they are done does the drip set start, and that is
+ * deliberately unordered by importance — by then we are topping up a profile
+ * that already works rather than filling a gap.
+ */
+export function nextQuestion(answeredIds: string[]): PsychQuestion | null {
+  const answered = new Set(answeredIds);
+  return (
+    CORE_QUESTIONS.find((q) => !answered.has(q.id)) ??
+    DRIP_QUESTIONS.find((q) => !answered.has(q.id)) ??
+    null
+  );
+}
+
+/** How far through the core set someone is. */
+export function coreProgress(answeredIds: string[]): { done: number; total: number } {
+  const answered = new Set(answeredIds);
+  return {
+    done: CORE_QUESTIONS.filter((q) => answered.has(q.id)).length,
+    total: CORE_QUESTIONS.length,
+  };
+}
+
 export function scorePsych(answers: PsychAnswer[]): PsychProfile {
   const sums = {} as Record<Trait, number>;
   const counts = {} as Record<Trait, number>;

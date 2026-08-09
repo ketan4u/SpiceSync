@@ -48,6 +48,22 @@ const PEOPLE: Array<{ name: string; gender: string }> = [
   { name: 'Pooja', gender: 'woman' }, { name: 'Rishi', gender: 'man' },
   { name: 'Anjali', gender: 'woman' }, { name: 'Gaurav', gender: 'man' },
   { name: 'Neha', gender: 'woman' }, { name: 'Sameer', gender: 'man' },
+  { name: 'Ira', gender: 'woman' }, { name: 'Kabir', gender: 'man' },
+  { name: 'Mitali', gender: 'woman' }, { name: 'Yash', gender: 'man' },
+  { name: 'Sanjana', gender: 'woman' }, { name: 'Harsh', gender: 'man' },
+  { name: 'Devika', gender: 'woman' }, { name: 'Manav', gender: 'man' },
+  { name: 'Rhea', gender: 'woman' }, { name: 'Tanmay', gender: 'man' },
+  { name: 'Aarti', gender: 'woman' }, { name: 'Kunal', gender: 'man' },
+  { name: 'Simran', gender: 'woman' }, { name: 'Ravi', gender: 'man' },
+  { name: 'Bhavna', gender: 'woman' }, { name: 'Omkar', gender: 'man' },
+  { name: 'Charu', gender: 'woman' }, { name: 'Faisal', gender: 'man' },
+  { name: 'Juhi', gender: 'woman' }, { name: 'Nitin', gender: 'man' },
+  { name: 'Radhika', gender: 'woman' }, { name: 'Sahil', gender: 'man' },
+  { name: 'Trisha', gender: 'woman' }, { name: 'Ujjwal', gender: 'man' },
+  { name: 'Vidya', gender: 'woman' }, { name: 'Zain', gender: 'man' },
+  { name: 'Ayesha', gender: 'woman' }, { name: 'Parth', gender: 'man' },
+  { name: 'Malini', gender: 'woman' }, { name: 'Girish', gender: 'man' },
+  { name: 'Sarita', gender: 'woman' }, { name: 'Imran', gender: 'man' },
 ];
 
 const FREE_DAYS = [
@@ -123,7 +139,7 @@ function runQuizFor(rng: () => number) {
   return acc;
 }
 
-export function seedProfiles(count = 30, seed = 20260807): SeedProfile[] {
+export function seedProfiles(count = 64, seed = 20260807): SeedProfile[] {
   const rng = mulberry32(seed);
   const out: SeedProfile[] = [];
 

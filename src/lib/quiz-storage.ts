@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 import type { Cuisine, DietBand, TasteVector } from './food/types.ts';
+import type { PsychAnswer } from './psych/psych-bank.ts';
 
 /**
  * The quiz result, kept on the device.
@@ -73,6 +74,7 @@ export function clearQuiz(): void {
  * shows everyone.
  */
 const PREFS_KEY = 'spicesync.prefs';
+const PSYCH_KEY = 'spicesync.psych';
 
 export interface StoredPrefs {
   gender: string;
@@ -162,7 +164,14 @@ const prefsSnapshot = makeSnapshot<StoredPrefs>(PREFS_KEY, (v) => {
   return p?.gender && Array.isArray(p.seeking) && p.seeking.length > 0 ? p : null;
 });
 
+const psychSnapshot = makeSnapshot<PsychAnswer[]>(PSYCH_KEY, (v) =>
+  Array.isArray(v) ? (v as PsychAnswer[]) : null,
+);
+
 const nullSnapshot = () => null;
+/** Stable empty array — returning a fresh [] each call would re-render forever. */
+const EMPTY: PsychAnswer[] = [];
+const emptySnapshot = () => EMPTY;
 
 export function useStoredQuiz(): StoredQuiz | null {
   return useSyncExternalStore(subscribe, quizSnapshot, nullSnapshot);
@@ -184,6 +193,39 @@ const alwaysFalse = () => false;
 
 export function useHydrated(): boolean {
   return useSyncExternalStore(noopSubscribe, alwaysTrue, alwaysFalse);
+}
+
+export function useStoredPsych(): PsychAnswer[] {
+  return useSyncExternalStore(subscribe, () => psychSnapshot() ?? EMPTY, emptySnapshot);
+}
+
+/**
+ * Records one answer, replacing any previous answer to the same question.
+ *
+ * Answers arrive a few at a time — twelve up front if someone sits through
+ * them, then one at a time between swipes — so this appends rather than
+ * writing a whole set.
+ */
+export function savePsychAnswer(answer: PsychAnswer): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = psychSnapshot() ?? [];
+    const next = [...existing.filter((a) => a.questionId !== answer.questionId), answer];
+    window.localStorage.setItem(PSYCH_KEY, JSON.stringify(next));
+    emit();
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function clearPsych(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(PSYCH_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+  emit();
 }
 
 export function clearPrefs(): void {

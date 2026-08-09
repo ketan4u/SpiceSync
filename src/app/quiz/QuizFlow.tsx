@@ -412,9 +412,10 @@ function Result({ outcome, onRestart }: { outcome: Outcome; onRestart: () => voi
       </div>
 
       <p className="note">
-        This is where matching starts, not ends. SpiceSync weighs how you eat alongside how you handle
-        a disagreement, how fast you like things to move, and what you will not compromise on — and
-        it tells you which of those you actually share with someone.
+        This is where matching starts, not ends. SpiceSync weighs how you eat alongside how you
+        handle a disagreement, how fast you like things to move, and what you will not compromise
+        on — and it tells you which of those you actually share with someone. That second half is
+        twelve situations, about ninety seconds, and you can stop whenever.
       </p>
 
       <div className="stack">
@@ -470,6 +471,10 @@ function Result({ outcome, onRestart }: { outcome: Outcome; onRestart: () => voi
             </p>
           </>
         )}
+
+        <a className="btn btn-ghost" href="/questions" style={{ textDecoration: 'none' }}>
+          Answer twelve questions
+        </a>
 
         <a className="btn btn-ghost" href="/explore" style={{ textDecoration: 'none' }}>
           See who you&apos;d match with

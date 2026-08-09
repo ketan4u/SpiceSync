@@ -6,12 +6,19 @@ import { foodIdentityLabel } from '@/lib/food/score-taste.ts';
 import { rankFor } from '@/lib/match/score.ts';
 import { seedProfiles, type SeedProfile } from '@/lib/match/seed-profiles.ts';
 import type { MatchProfile, ScoredMatch } from '@/lib/match/types.ts';
-import { scorePsych } from '@/lib/psych/psych-bank.ts';
+import {
+  coreProgress,
+  nextQuestion,
+  scorePsych,
+  type PsychQuestion,
+} from '@/lib/psych/psych-bank.ts';
 import {
   clearPrefs,
   savePrefs,
+  savePsychAnswer,
   useHydrated,
   useStoredPrefs,
+  useStoredPsych,
   useStoredQuiz,
   type StoredPrefs,
 } from '@/lib/quiz-storage.ts';
@@ -41,10 +48,11 @@ export default function ExploreFeed() {
   const hydrated = useHydrated();
   const quiz = useStoredQuiz();
   const prefs = useStoredPrefs();
-  const [index, setIndex] = useState(0);
+  const psych = useStoredPsych();
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
+  const [drip, setDrip] = useState<PsychQuestion | null>(null);
 
-  const pool = useMemo(() => seedProfiles(30), []);
+  const pool = useMemo(() => seedProfiles(64), []);
 
   const me: MatchProfile | null = useMemo(() => {
     if (!quiz || !prefs) return null;
@@ -60,17 +68,17 @@ export default function ExploreFeed() {
       openToDistance: true,
       taste: quiz.vector,
       representativeDish: quiz.dishName,
-      // Section 3 has not been asked yet, so the psychological half of every
-      // score is genuinely neutral. The banner below says so rather than
-      // letting the number imply more than we know.
-      psych: scorePsych([]),
+      // Real answers when there are any. Unanswered traits are skipped by the
+      // scorer rather than treated as agreement, so a thin Section 3 weakens the
+      // psychological half honestly instead of inflating it.
+      psych: scorePsych(psych),
       nonNegotiables: [],
       attributes: [],
     };
-    // Both dependencies matter. Listing only `quiz` here meant submitting the
-    // gate updated `prefs` without recomputing `me`, so the guard below sent the
-    // user straight back to the gate and it looked like the button did nothing.
-  }, [quiz, prefs]);
+    // Every value the body reads belongs here. Listing only `quiz` once meant
+    // submitting the gate updated `prefs` without recomputing `me`, and the
+    // guard below sent the user back to the gate as if the button did nothing.
+  }, [quiz, prefs, psych]);
 
   const ranked = useMemo(() => (me ? rankFor(me, pool) : null), [me, pool]);
 
@@ -99,12 +107,25 @@ export default function ExploreFeed() {
   }
 
   const matches = ranked.matches;
-  const current = matches[index] as (ScoredMatch & { profile: SeedProfile }) | undefined;
+  // Remaining, not indexed. Answering a drip question re-ranks the feed, and an
+  // index would then silently point at a different person mid-swipe.
+  const remaining = matches.filter((m) => !(m.profile.id in verdicts)) as Array<
+    ScoredMatch & { profile: SeedProfile }
+  >;
+  const current = remaining[0];
+  const decided = Object.keys(verdicts).length;
+  const answeredIds = psych.map((a) => a.questionId);
+  const progress = coreProgress(answeredIds);
 
   const decide = (verdict: Verdict) => {
     if (!current) return;
     setVerdicts((v) => ({ ...v, [current.profile.id]: verdict }));
-    setIndex((i) => i + 1);
+    // Every fourth card, ask one question — the brief's "prompts shown while
+    // swiping". Frequent enough to build a profile, rare enough not to feel
+    // like a form.
+    if ((decided + 1) % 4 === 0) {
+      setDrip(nextQuestion(answeredIds));
+    }
   };
 
   const liked = Object.values(verdicts).filter((v) => v === 'like').length;
@@ -125,32 +146,60 @@ export default function ExploreFeed() {
             You liked {liked} of {matches.length}. In the real thing this is where you would wait
             for the pool to grow — which is exactly why the launch is one city at a time.
           </p>
-          <button className="btn btn-ghost" onClick={() => { setIndex(0); setVerdicts({}); }}>
+          <button className="btn btn-ghost" onClick={() => { setVerdicts({}); setDrip(null); }}>
             Start over
           </button>
         </div>
       ) : (
         <>
           <div className="feed-head">
-            <span className="feed-count">{index + 1} of {matches.length}</span>
+            <span className="feed-count">{decided + 1} of {matches.length}</span>
             <button
               className="feed-mine"
-              onClick={() => { clearPrefs(); setIndex(0); setVerdicts({}); }}
+              onClick={() => { clearPrefs(); setVerdicts({}); setDrip(null); }}
             >
               {quiz.label} · change who you see
             </button>
           </div>
 
-          <Card match={current} showScore={current.showScore} />
+          {drip ? (
+            <div className="drip">
+              <p className="drip-label">One quick question</p>
+              <h2>{drip.prompt}</h2>
+              {drip.options.map((o) => (
+                <button
+                  key={o.id}
+                  className="option"
+                  onClick={() => {
+                    savePsychAnswer({ questionId: drip.id, optionId: o.id });
+                    setDrip(null);
+                  }}
+                >
+                  <span className="option-title" style={{ fontWeight: 500 }}>{o.label}</span>
+                </button>
+              ))}
+              <button
+                className="btn-text"
+                style={{ margin: '2px auto 0', display: 'block' }}
+                onClick={() => setDrip(null)}
+              >
+                Skip
+              </button>
+            </div>
+          ) : (
+            <Card match={current} showScore={current.showScore} />
+          )}
 
-          <div className="verdicts">
-            <button className="verdict pass" onClick={() => decide('pass')} aria-label="Pass">
-              Pass
-            </button>
-            <button className="verdict like" onClick={() => decide('like')} aria-label="Like">
-              Like
-            </button>
-          </div>
+          {!drip && (
+            <div className="verdicts">
+              <button className="verdict pass" onClick={() => decide('pass')} aria-label="Pass">
+                Pass
+              </button>
+              <button className="verdict like" onClick={() => decide('like')} aria-label="Like">
+                Like
+              </button>
+            </div>
+          )}
 
           {!current.showScore && (
             <p className="foot">
@@ -159,10 +208,20 @@ export default function ExploreFeed() {
             </p>
           )}
 
-          <p className="foot">
-            Half of every score is psychological compatibility, and you have not answered those
-            questions yet — so these are food and intent only.
-          </p>
+          {progress.done === 0 ? (
+            <p className="foot">
+              Half of every score is psychological compatibility, and you have not answered those
+              questions yet — so these are food and intent only.{' '}
+              <Link href="/questions">Answer twelve</Link>
+            </p>
+          ) : progress.done < progress.total ? (
+            <p className="foot">
+              {progress.done} of {progress.total} personality questions answered.{' '}
+              <Link href="/questions">Answer the rest</Link> to sharpen these.
+            </p>
+          ) : (
+            <p className="foot">All twelve answered — these scores use everything we have.</p>
+          )}
         </>
       )}
     </>
