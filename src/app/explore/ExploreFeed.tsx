@@ -7,7 +7,13 @@ import { rankFor } from '@/lib/match/score.ts';
 import { seedProfiles, type SeedProfile } from '@/lib/match/seed-profiles.ts';
 import type { MatchProfile, ScoredMatch } from '@/lib/match/types.ts';
 import { scorePsych } from '@/lib/psych/psych-bank.ts';
-import { loadPrefs, loadQuiz, savePrefs, type StoredPrefs } from '@/lib/quiz-storage.ts';
+import {
+  loadPrefs,
+  loadQuiz,
+  savePrefs,
+  type StoredPrefs,
+  type StoredQuiz,
+} from '@/lib/quiz-storage.ts';
 import { CITIES } from '@/lib/cities.ts';
 
 /**
@@ -27,17 +33,20 @@ const GENDER_OPTIONS = [
 ];
 
 export default function ExploreFeed() {
-  const quiz = useMemo(() => loadQuiz(), []);
+  const [hydrated, setHydrated] = useState(false);
+  const [quiz, setQuiz] = useState<StoredQuiz | null>(null);
   const [prefs, setPrefs] = useState<StoredPrefs | null>(null);
-  const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [index, setIndex] = useState(0);
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
 
-  // localStorage is client-only, so read it after mount rather than during
-  // render — otherwise the server and the browser disagree on first paint.
+  // Both live in localStorage, which does not exist on the server. Reading them
+  // during render made the server emit "take the quiz first" while the browser
+  // rendered the feed — a hydration mismatch. Read once, after mount, and show
+  // a placeholder until then.
   useEffect(() => {
+    setQuiz(loadQuiz());
     setPrefs(loadPrefs());
-    setPrefsLoaded(true);
+    setHydrated(true);
   }, []);
 
   const pool = useMemo(() => seedProfiles(30), []);
@@ -63,9 +72,16 @@ export default function ExploreFeed() {
       nonNegotiables: [],
       attributes: [],
     };
-  }, [quiz]);
+    // Both dependencies matter. Listing only `quiz` here meant submitting the
+    // gate updated `prefs` without recomputing `me`, so the guard below sent the
+    // user straight back to the gate and it looked like the button did nothing.
+  }, [quiz, prefs]);
 
   const ranked = useMemo(() => (me ? rankFor(me, pool) : null), [me, pool]);
+
+  if (!hydrated) {
+    return <p className="foot">Loading…</p>;
+  }
 
   if (!quiz) {
     return (
@@ -82,8 +98,6 @@ export default function ExploreFeed() {
       </>
     );
   }
-
-  if (!prefsLoaded) return null;
 
   if (!prefs || !me || !ranked) {
     return <PrefsGate onDone={(p) => { savePrefs(p); setPrefs(p); }} />;
