@@ -16,14 +16,29 @@ cp .env.example .env.local     # then fill in the two Supabase values
 npm run dev                    # http://localhost:3000
 ```
 
-`SUPABASE_URL` and `SUPABASE_ANON_KEY` come from your Supabase project's
-**Project Settings → API Keys**. Use the `anon` / `publishable` key — never the
-`service_role` one. Neither var is prefixed `NEXT_PUBLIC_`, so neither reaches
-the browser. The app runs fine without them; the waitlist form just reports that
-it is not connected instead of silently dropping signups.
+All four values come from **Project Settings → API Keys**. Use the `anon` /
+`publishable` key — never `service_role`.
 
-Apply `supabase/migrations/0001_waitlist.sql` in the Supabase SQL Editor before
-expecting signups to store.
+The `NEXT_PUBLIC_` pair **is** sent to the browser, and has to be: Supabase Auth
+runs client-side. That is safe only because row-level security decides what the
+key's holder may do, which makes the policies in `supabase/migrations/` the
+entire security boundary rather than a second line of defence. The app runs
+without any of it — sign-in reports that it is not connected rather than failing
+oddly.
+
+Apply both migrations in the Supabase SQL Editor, in order.
+
+**One Supabase setting is required for sign-in.** The default email template
+sends a magic link; this app uses a six-digit code, because on a phone a link
+bounces you out to a mail app and often back into a different browser without
+the session. Go to **Authentication → Email Templates → Magic Link** and make
+sure the body includes `{{ .Token }}`. Supabase's built-in mail service is also
+rate-limited to a handful of messages per hour — fine for development, but
+production needs your own SMTP.
+
+Phone OTP is implemented behind `AUTH_PHONE_ENABLED`. Turning it on needs an SMS
+provider **and** DLT registration with an Indian telecom operator; without that,
+codes to Indian numbers are simply not delivered.
 
 ## Branches
 
@@ -92,6 +107,10 @@ src/lib/match/         the scorer
   seed-profiles.ts       synthetic people for developing Explore — NOT users
 src/lib/cities.ts      waitlist cities, shared by the form and the server action
 src/lib/quiz-storage.ts  the quiz result and gender/seeking prefs, on the device
+src/app/auth/          sign-in (email OTP live, phone built but flagged off)
+src/app/onboarding/    the essentials, and the merge of device-held answers
+src/lib/supabase/      browser and server clients
+src/middleware.ts      session refresh and route gating
 src/app/quiz/          the public, pre-signup quiz (Section 2)
 src/app/questions/     the core 12 personality questions (Section 3)
 src/app/explore/       the ranked feed, with questions dripped between cards
@@ -167,5 +186,16 @@ Both halves of the score are now live. With no Section 3 answers the
 psychological component sits at a neutral 0.500 and only 11 of 16 cards can be
 explained; after the core twelve it reaches ~0.72 and every card carries chips.
 
-Not built: auth, onboarding, chat, moderation, likes that persist anywhere.
-Dish art is emoji placeholder pending real photography.
+Accounts exist: email OTP sign-in, an 18+ gate enforced in the database as well
+as the UI, and onboarding that carries the quiz result and personality answers
+from the device into the profile.
+
+Not built: chat, moderation, likes that persist anywhere, and selfie
+*verification* — photos upload but nothing checks them. Explore still reads
+seeded profiles rather than the `profiles` table. Dish art is emoji placeholder.
+
+**Before Explore reads real profiles**, fix the read policy in `0002_profiles.sql`.
+RLS is row-level, so "other finished profiles are readable" currently exposes
+every column of those rows — including raw `psych_answers` and `date_of_birth`.
+The feed must be served from a server-side view that projects only display
+fields, with ranking done on the server.

@@ -784,3 +784,82 @@ p {
   line-height: 1.3;
   margin-bottom: 16px;
 }
+
+.text-input,
+.code-input {
+  width: 100%;
+  padding: 15px 18px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px; /* below 16px iOS zooms the whole page on focus */
+}
+
+.text-input:focus,
+.code-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.code-input {
+  text-align: center;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em; /* balances the trailing letter-spacing */
+  font-variant-numeric: tabular-nums;
+}
+
+.uploads {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 20px 0 6px;
+}
+
+.upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  aspect-ratio: 3 / 4;
+  border: 1.5px dashed var(--line);
+  border-radius: 18px;
+  background: var(--bg-elev);
+  cursor: pointer;
+  transition: border-color 0.14s ease;
+}
+
+.upload:hover {
+  border-color: var(--accent);
+}
+
+.upload[data-done='true'] {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.upload input {
+  display: none;
+}
+
+.upload-art {
+  font-size: 26px;
+  color: var(--ink-faint);
+}
+
+.upload[data-done='true'] .upload-art {
+  color: var(--accent);
+}
+
+.upload-label {
+  font-size: 13px;
+  color: var(--ink-faint);
+  text-align: center;
+  padding: 0 8px;
+}
