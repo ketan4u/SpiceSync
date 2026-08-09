@@ -59,11 +59,12 @@ function makeProfile(id: string, seed: number, over: Partial<MatchProfile> = {})
     optionId: q.options[Math.floor(rng() * q.options.length)].id,
   }));
 
+  const gender = rng() < 0.5 ? 'man' : 'woman';
   return {
     id,
     age: 24 + Math.floor(rng() * 12),
-    gender: rng() < 0.5 ? 'man' : 'woman',
-    seeking: [],
+    gender,
+    seeking: [gender === 'man' ? 'woman' : 'man'],
     ageMin: 21,
     ageMax: 40,
     city: 'bangalore',
@@ -87,6 +88,29 @@ console.log('\n1. GATES ARE ABSOLUTE');
 
   const wrongGender = { ...b, seeking: ['woman'] };
   check('gender preference respected', gateFor(a, wrongGender) === 'gender', 'blocked');
+
+  // FAIL CLOSED. An unanswered profile must match nobody, never everybody —
+  // treating silence as "no preference" is what showed a woman a feed of women.
+  check('no stated preference blocks, rather than matching everyone',
+    gateFor({ ...a, seeking: [] }, b) === 'preferences_missing', 'blocked');
+  check('the other side having no preference also blocks',
+    gateFor(a, { ...b, seeking: [] }) === 'preferences_missing', 'blocked');
+  check('missing gender blocks',
+    gateFor({ ...a, gender: '' }, b) === 'preferences_missing', 'blocked');
+
+  // Wanting must be mutual, not one-directional.
+  const oneWay = { ...b, gender: 'woman', seeking: ['woman'] };
+  check('one-sided interest is not a match', gateFor(a, oneWay) === 'gender',
+    'a wants b, b does not want a');
+
+  // The specific bug: nobody sees their own gender unless they asked to.
+  const womenOnly = makeProfile('w', 3, { gender: 'woman', seeking: ['man'], age: 27 });
+  const otherWomen = Array.from({ length: 10 }, (_, i) =>
+    makeProfile(`ow${i}`, 900 + i, { gender: 'woman', seeking: ['man'] }),
+  );
+  const feed = rankFor(womenOnly, otherWomen);
+  check('a woman seeking men sees no women', feed.matches.length === 0,
+    `${feed.matches.length} shown out of ${otherWomen.length}`);
 
   const tooYoung = { ...b, age: 19 };
   check('age range respected', gateFor(a, tooYoung) === 'age', 'blocked');
@@ -210,10 +234,19 @@ console.log('\n6. NO SCORE WITHOUT A REASON');
   );
   const me = makeProfile('me', 7, { gender: 'woman', seeking: ['man'], age: 28, ageMin: 21, ageMax: 45 });
   const { matches } = rankFor(me, pool);
-  const shown = matches.filter((m) => m.displayScore >= 70);
-  const withoutChips = shown.filter((m) => m.chips.length < 2);
-  check('every surfaced match carries at least 2 chips', withoutChips.length === 0,
-    `${shown.length} matches at 70+, all explained`);
+  const numbered = matches.filter((m) => m.showScore);
+  const bare = numbered.filter((m) => m.chips.length === 0);
+  check('no card ever shows a number without a reason', bare.length === 0,
+    `${numbered.length} of ${matches.length} show a score, all explained`);
+
+  const strong = matches.filter((m) => m.displayScore >= 70 && m.showScore);
+  check('strong matches carry at least 2 chips', strong.every((m) => m.chips.length >= 2),
+    `${strong.length} matches at 70+`);
+
+  const unexplained = matches.filter((m) => m.chips.length === 0);
+  check('unexplainable matches are still shown, just without a score',
+    unexplained.every((m) => !m.showScore && !m.banner),
+    `${unexplained.length} shown without a number rather than hidden`);
 
   const bannered = matches.filter((m) => m.banner);
   check('banner requires genuine compatibility, not just rank',

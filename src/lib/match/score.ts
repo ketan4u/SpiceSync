@@ -54,11 +54,23 @@ function intentsOverlap(a: Intent[], b: Intent[]): boolean {
   return a.some((i) => b.includes(i));
 }
 
+/**
+ * Both people must have asked to see the other. This FAILS CLOSED.
+ *
+ * An empty `seeking` list is treated as "we do not know yet", not "no
+ * preference" — so such a profile matches nobody until it is answered. The
+ * opposite reading is tempting because it makes a half-built profile useful
+ * immediately, and it is exactly the bug that shows a woman seeking men a feed
+ * full of women. Any path that can produce a profile without preferences — an
+ * abandoned onboarding, a partial import, a migration that adds the column
+ * later — silently becomes a correctness failure the user notices before we do.
+ *
+ * Missing gender is treated the same way, for the same reason.
+ */
 function genderOk(a: MatchProfile, b: MatchProfile): boolean {
-  // Empty `seeking` means "no preference stated", not "nobody".
-  const aWantsB = a.seeking.length === 0 || a.seeking.includes(b.gender);
-  const bWantsA = b.seeking.length === 0 || b.seeking.includes(a.gender);
-  return aWantsB && bWantsA;
+  if (a.seeking.length === 0 || b.seeking.length === 0) return false;
+  if (!a.gender || !b.gender) return false;
+  return a.seeking.includes(b.gender) && b.seeking.includes(a.gender);
 }
 
 function ageOk(a: MatchProfile, b: MatchProfile): boolean {
@@ -81,6 +93,11 @@ function dealbreakerOk(a: MatchProfile, b: MatchProfile): boolean {
  */
 export function gateFor(a: MatchProfile, b: MatchProfile): BlockReason | null {
   if (a.id === b.id) return 'self';
+  // Separated so an incomplete profile is diagnosable in the admin view rather
+  // than looking like an ordinary preference mismatch.
+  if (a.seeking.length === 0 || b.seeking.length === 0 || !a.gender || !b.gender) {
+    return 'preferences_missing';
+  }
   if (!genderOk(a, b)) return 'gender';
   if (!ageOk(a, b)) return 'age';
   if (!intentsOverlap(a.intents, b.intents)) return 'intent';
@@ -342,15 +359,24 @@ export function rankFor(me: MatchProfile, pool: MatchProfile[]): RankResult {
 
   permitted.sort((x, y) => y.raw - x.raw);
   const n = permitted.length;
-  const showScore = n >= MIN_POOL_FOR_SCORES;
+  const poolBigEnough = n >= MIN_POOL_FOR_SCORES;
 
   const matches: ScoredMatch[] = permitted.map((entry, index) => {
     // Rank 0 is the best; percentile 1 means "better than everyone else here".
     const percentile = n > 1 ? 1 - index / (n - 1) : 1;
     const displayScore = Math.round(100 * (0.5 * percentile + 0.5 * entry.raw));
     const sameCity = me.city === entry.profile.city;
-    const banner =
-      showScore && displayScore >= BANNER_THRESHOLD && entry.raw >= RAW_FLOOR_FOR_BANNER;
+    const chips = whyChips(me, entry.profile);
+
+    // A number with nothing behind it is the exact thing this product refuses to
+    // ship. Two people can be permissible and still give us nothing to say —
+    // typically low-similarity pairs where the viewer has not answered Section 3
+    // — and for those the honest move is to show the person without the score,
+    // not to invent a reason. Enforced here rather than in the card so no future
+    // screen can render around it.
+    const explainable = chips.length > 0;
+    const showScore = poolBigEnough && explainable;
+    const banner = showScore && displayScore >= BANNER_THRESHOLD && entry.raw >= RAW_FLOOR_FOR_BANNER;
 
     return {
       profile: entry.profile,
@@ -358,8 +384,8 @@ export function rankFor(me: MatchProfile, pool: MatchProfile[]): RankResult {
       components: entry.components,
       displayScore,
       showScore,
+      chips,
       banner,
-      chips: whyChips(me, entry.profile),
       _sameCity: sameCity,
     } as ScoredMatch & { _sameCity: boolean };
   });

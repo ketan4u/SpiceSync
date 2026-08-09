@@ -55,6 +55,8 @@ export interface MatchProfile {
 }
 
 export type BlockReason =
+  /** One side has not told us their gender or who they want to see. */
+  | 'preferences_missing'
   | 'gender'
   | 'age'
   | 'intent'
@@ -78,7 +80,11 @@ export interface ScoredMatch {
    * the pool, so Explore is populated on day one — see score.ts.
    */
   displayScore: number;
-  /** Suppress the number entirely while the pool is too thin to mean anything. */
+  /**
+   * Whether to render the number at all. False when the pool is too thin for a
+   * percentage to mean anything, AND false when there is nothing to explain it
+   * with — see score.ts.
+   */
   showScore: boolean;
   /** "We think you'll be a great match — you should try to meet." */
   banner: boolean;

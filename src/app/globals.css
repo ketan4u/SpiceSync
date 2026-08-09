@@ -547,3 +547,208 @@ p {
 .select option[value=""] {
   color: var(--ink-faint);
 }
+
+/* ----------------------------------------------------------------- explore */
+
+.demo-banner {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: 12px;
+  padding: 10px 13px;
+  margin-bottom: 18px;
+}
+
+.demo-banner strong {
+  color: var(--accent);
+}
+
+.feed-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.feed-count {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.feed-mine {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--line);
+}
+
+.card {
+  border: 1.5px solid var(--line);
+  border-radius: 22px;
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-lift);
+  overflow: hidden;
+}
+
+.card-banner {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 620;
+  line-height: 1.35;
+  padding: 11px 16px;
+  text-align: center;
+}
+
+.card-photos {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 2px;
+  background: var(--line);
+}
+
+/* Both are placeholders until real photography lands. The portrait stands in
+   for the selfie-verified photo; the dish is the food that represents them. */
+.card-portrait,
+.card-dish {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  background: var(--bg);
+}
+
+.card-portrait span {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--ink-faint);
+  opacity: 0.55;
+}
+
+.card-dish {
+  background: var(--accent-soft);
+}
+
+.card-dish span {
+  font-size: 46px;
+  line-height: 1;
+}
+
+.card-body {
+  padding: 18px 18px 20px;
+}
+
+.card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.card-score {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-score.high {
+  color: var(--accent);
+}
+
+.card-identity {
+  margin: 6px 0 2px;
+  font-size: 15px;
+  font-weight: 620;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+
+.card-meta {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  color: var(--ink-faint);
+}
+
+.card-prompt {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.card-prompt-q {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+.card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.verdicts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.verdict {
+  padding: 15px;
+  border-radius: 999px;
+  font-weight: 650;
+  font-size: 15.5px;
+  border: 1.5px solid var(--line);
+  background: var(--bg-elev);
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.verdict:active {
+  transform: scale(0.98);
+}
+
+.verdict.pass {
+  color: var(--ink-soft);
+}
+
+.verdict.like {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.empty {
+  text-align: center;
+  padding: 40px 12px;
+}
+
+.empty-art {
+  font-size: 52px;
+  margin-bottom: 12px;
+}
+
+.card-nothing {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+  font-style: italic;
+}
