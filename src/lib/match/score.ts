@@ -1,4 +1,4 @@
-import { CUISINE_LABELS, DIET_BAND_ORDER, type Cuisine, type DietBand, type Setting } from '../food/types.ts';
+import { CUISINE_LABELS, DIET_BAND_ORDER, type Cuisine, type DietBand } from '../food/types.ts';
 import { spiceLabel } from '../food/score-taste.ts';
 import { TRAITS, type Trait } from '../psych/psych-bank.ts';
 import {

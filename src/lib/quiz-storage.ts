@@ -1,3 +1,6 @@
+'use client';
+
+import { useSyncExternalStore } from 'react';
 import type { Cuisine, DietBand, TasteVector } from './food/types.ts';
 
 /**
@@ -31,6 +34,7 @@ export function saveQuiz(q: Omit<StoredQuiz, 'version' | 'takenAt'>): void {
   try {
     const payload: StoredQuiz = { ...q, version: VERSION, takenAt: new Date().toISOString() };
     window.localStorage.setItem(KEY, JSON.stringify(payload));
+    emit();
   } catch {
     // Private browsing, storage full, or storage disabled. The quiz result is
     // still on screen; only the handoff to Explore is lost.
@@ -79,6 +83,7 @@ export function savePrefs(p: StoredPrefs): void {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(PREFS_KEY, JSON.stringify(p));
+    emit();
   } catch {
     /* storage unavailable */
   }
@@ -97,4 +102,96 @@ export function loadPrefs(): StoredPrefs | null {
   } catch {
     return null;
   }
+}
+
+// ------------------------------------------------------- reading it in React
+
+/**
+ * localStorage as a proper external store.
+ *
+ * The obvious approach — read it in an effect and call setState — works but is
+ * the pattern React now lints against, because it schedules a second render on
+ * every mount. `useSyncExternalStore` is built for exactly this: a value that
+ * lives outside React, with a distinct server snapshot so hydration does not
+ * mismatch.
+ *
+ * Snapshots must be referentially stable or React re-renders forever, so the
+ * parsed object is cached and only rebuilt when the underlying string changes.
+ */
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+function emit(): void {
+  for (const l of listeners) l();
+}
+
+function subscribe(listener: Listener): () => void {
+  listeners.add(listener);
+  // Also react to writes from another tab.
+  window.addEventListener('storage', listener);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener('storage', listener);
+  };
+}
+
+function makeSnapshot<T>(key: string, validate: (v: unknown) => T | null) {
+  let lastRaw: string | null | undefined;
+  let lastValue: T | null = null;
+  return (): T | null => {
+    const raw = window.localStorage.getItem(key);
+    if (raw !== lastRaw) {
+      lastRaw = raw;
+      try {
+        lastValue = raw ? validate(JSON.parse(raw)) : null;
+      } catch {
+        lastValue = null;
+      }
+    }
+    return lastValue;
+  };
+}
+
+const quizSnapshot = makeSnapshot<StoredQuiz>(KEY, (v) => {
+  const q = v as StoredQuiz;
+  return q?.version === VERSION && q.vector ? q : null;
+});
+
+const prefsSnapshot = makeSnapshot<StoredPrefs>(PREFS_KEY, (v) => {
+  const p = v as StoredPrefs;
+  return p?.gender && Array.isArray(p.seeking) && p.seeking.length > 0 ? p : null;
+});
+
+const nullSnapshot = () => null;
+
+export function useStoredQuiz(): StoredQuiz | null {
+  return useSyncExternalStore(subscribe, quizSnapshot, nullSnapshot);
+}
+
+export function useStoredPrefs(): StoredPrefs | null {
+  return useSyncExternalStore(subscribe, prefsSnapshot, nullSnapshot);
+}
+
+/**
+ * True once the browser has taken over from the server-rendered HTML.
+ *
+ * Lets a component show a placeholder for the first paint instead of flashing
+ * the signed-out state before the stored values are visible.
+ */
+const noopSubscribe = () => () => {};
+const alwaysTrue = () => true;
+const alwaysFalse = () => false;
+
+export function useHydrated(): boolean {
+  return useSyncExternalStore(noopSubscribe, alwaysTrue, alwaysFalse);
+}
+
+export function clearPrefs(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(PREFS_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+  emit();
 }

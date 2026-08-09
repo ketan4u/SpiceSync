@@ -1,18 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { foodIdentityLabel } from '@/lib/food/score-taste.ts';
 import { rankFor } from '@/lib/match/score.ts';
 import { seedProfiles, type SeedProfile } from '@/lib/match/seed-profiles.ts';
 import type { MatchProfile, ScoredMatch } from '@/lib/match/types.ts';
 import { scorePsych } from '@/lib/psych/psych-bank.ts';
 import {
-  loadPrefs,
-  loadQuiz,
+  clearPrefs,
   savePrefs,
+  useHydrated,
+  useStoredPrefs,
+  useStoredQuiz,
   type StoredPrefs,
-  type StoredQuiz,
 } from '@/lib/quiz-storage.ts';
 import { CITIES } from '@/lib/cities.ts';
 
@@ -33,21 +34,15 @@ const GENDER_OPTIONS = [
 ];
 
 export default function ExploreFeed() {
-  const [hydrated, setHydrated] = useState(false);
-  const [quiz, setQuiz] = useState<StoredQuiz | null>(null);
-  const [prefs, setPrefs] = useState<StoredPrefs | null>(null);
+  // These live in localStorage, which does not exist on the server. Subscribing
+  // to them as an external store keeps the server and the first client paint in
+  // agreement, and means a write anywhere (including another tab) re-renders
+  // this component without any state to keep in sync by hand.
+  const hydrated = useHydrated();
+  const quiz = useStoredQuiz();
+  const prefs = useStoredPrefs();
   const [index, setIndex] = useState(0);
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
-
-  // Both live in localStorage, which does not exist on the server. Reading them
-  // during render made the server emit "take the quiz first" while the browser
-  // rendered the feed — a hydration mismatch. Read once, after mount, and show
-  // a placeholder until then.
-  useEffect(() => {
-    setQuiz(loadQuiz());
-    setPrefs(loadPrefs());
-    setHydrated(true);
-  }, []);
 
   const pool = useMemo(() => seedProfiles(30), []);
 
@@ -100,7 +95,7 @@ export default function ExploreFeed() {
   }
 
   if (!prefs || !me || !ranked) {
-    return <PrefsGate onDone={(p) => { savePrefs(p); setPrefs(p); }} />;
+    return <PrefsGate onDone={savePrefs} />;
   }
 
   const matches = ranked.matches;
@@ -140,7 +135,7 @@ export default function ExploreFeed() {
             <span className="feed-count">{index + 1} of {matches.length}</span>
             <button
               className="feed-mine"
-              onClick={() => { setPrefs(null); setIndex(0); setVerdicts({}); }}
+              onClick={() => { clearPrefs(); setIndex(0); setVerdicts({}); }}
             >
               {quiz.label} · change who you see
             </button>

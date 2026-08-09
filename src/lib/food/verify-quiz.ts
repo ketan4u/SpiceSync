@@ -199,7 +199,6 @@ console.log('\n4. BAND COVERAGE');
 {
   for (const band of DIET_BAND_ORDER) {
     const pool = poolFor(band);
-    const rng = mulberry32(99);
     const p: Persona = {
       dietBand: band,
       ideal: { spice: 0.5, richness: 0.5, novelty: 0.5, sweetness: 0.3 },

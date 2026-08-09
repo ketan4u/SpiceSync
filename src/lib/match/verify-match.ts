@@ -10,7 +10,7 @@
 import { getItem } from '../food/food-catalog.ts';
 import { DEFAULT_ROUNDS, mulberry32, nextPair, representativeItem } from '../food/pair-generator.ts';
 import { applyChoice, createAccumulator, finalise } from '../food/score-taste.ts';
-import { CONTINUOUS_AXES, DIET_BAND_ORDER, type ContinuousAxis, type Cuisine, type DietBand, type FoodItem } from '../food/types.ts';
+import { CONTINUOUS_AXES, DIET_BAND_ORDER, type ContinuousAxis, type Cuisine, type FoodItem } from '../food/types.ts';
 import { PSYCH_BANK, scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
 import {
   BANNER_THRESHOLD,
@@ -18,7 +18,6 @@ import {
   gateFor,
   rankFor,
   scorePair,
-  whyChips,
 } from './score.ts';
 import type { Intent, MatchProfile } from './types.ts';
 

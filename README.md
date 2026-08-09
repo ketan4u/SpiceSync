@@ -36,7 +36,7 @@ git checkout develop
 git pull
 git checkout -b food/add-bengali-dishes    # or fix/…, quiz/…
 # …work…
-npm run verify                             # must be 72/72 before you push
+npm run verify && npm run lint             # both must be clean before you push
 git push -u origin HEAD                    # then open a PR into develop
 ```
 
@@ -54,7 +54,13 @@ this product can ship), and any change to how axis estimates are transformed
 
 ```bash
 npm run verify        # 72 checks across four suites
+npm run lint          # ESLint — must be clean
 ```
+
+`react-hooks/exhaustive-deps` is set to **error**, not warning. A `useMemo`
+missing a dependency shipped a blank Explore screen once: the build passed, all
+four suites passed, and nothing threw. None of the harnesses cover React, so
+this rule is the only thing standing between that class of bug and production.
 
 These run under `node --experimental-strip-types`, so there is no build step and
 no test framework to install. That is also why relative imports inside `src/lib`
