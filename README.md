@@ -104,6 +104,8 @@ src/lib/psych/         the Section 3 bank (12 core + 22 drip situational items)
 src/lib/match/         the scorer
   score.ts               gates, weights, percentile ranking, why-chips
   types.ts               MatchProfile — what the scorer needs about a person
+  pool.ts                SERVER ONLY — loads candidates, ranks, projects to cards
+src/lib/supabase/admin.ts  SERVER ONLY — service-role client, bypasses RLS
   seed-profiles.ts       synthetic people for developing Explore — NOT users
 src/lib/cities.ts      waitlist cities, shared by the form and the server action
 src/lib/quiz-storage.ts  the quiz result and gender/seeking prefs, on the device
@@ -190,15 +192,32 @@ Accounts exist: email OTP sign-in, an 18+ gate enforced in the database as well
 as the UI, and onboarding that carries the quiz result and personality answers
 from the device into the profile.
 
-Not built: chat, moderation, likes that persist anywhere, and selfie
-*verification* — photos upload but nothing checks them. Explore still reads
-seeded profiles rather than the `profiles` table. Dish art is emoji placeholder.
+Explore reads real accounts when you are signed in and onboarded, and falls back
+to the seeded demo otherwise, so the public quiz still leads somewhere. Likes
+persist, and a mutual like is a match.
 
-**Before Explore reads real profiles**, add a proper access path. There is
-deliberately no cross-user read policy: you can reach your own row and nothing
-else. The first attempt at one recursed (its `USING` clause subqueried the table
-it protected, which broke every write) and it also exposed every column of the
-rows it opened up, because RLS is row-level. Serve the feed from a server-side
-view projecting only display fields, rank on the server, and put any membership
-check in a `SECURITY DEFINER` function so it bypasses RLS rather than
-re-entering it.
+Not built: messaging, moderation, and selfie *verification* — photos upload but
+nothing checks them. The dealbreaker gate has nothing to act on because Section
+1's non-negotiables are not collected yet. Dish art is emoji placeholder.
+
+**How the feed reads other people.** There is deliberately no cross-user read
+policy — through the ordinary client you can reach your own row and nothing
+else. An earlier attempt at one recursed (its `USING` clause subqueried the
+table it protected, which broke every write) *and* leaked every column, because
+RLS is row-level.
+
+Instead, ranking runs as trusted server code in `src/lib/match/pool.ts` using
+the service-role client, which bypasses RLS. That is necessary because the
+scorer is TypeScript and must read candidates' psych answers, which no user may
+do. The containment is:
+
+- Both files start with `import 'server-only'`, so reaching them from a client
+  component is a build error.
+- `SUPABASE_SERVICE_ROLE_KEY` has no `NEXT_PUBLIC_` prefix and is never bundled.
+  The build checks `.next/static` for it.
+- Nothing leaves the server unprojected. `FeedCard` carries no psych answers and
+  no date of birth — only a derived age.
+- Photos are in a private bucket with no read policy; the server mints signed
+  URLs that expire after 30 minutes.
+
+Change either file the way you would change an auth check.
