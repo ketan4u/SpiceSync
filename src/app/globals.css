@@ -806,10 +806,12 @@ p {
 
 .code-input {
   text-align: center;
-  font-size: 30px;
   font-weight: 700;
-  letter-spacing: 0.32em;
-  text-indent: 0.32em; /* balances the trailing letter-spacing */
+  /* Scales with the viewport so a ten-digit code still fits on a small phone —
+     the length is a Supabase setting, not something the UI can assume. */
+  font-size: clamp(22px, 7vw, 30px);
+  letter-spacing: 0.22em;
+  text-indent: 0.22em; /* balances the trailing letter-spacing */
   font-variant-numeric: tabular-nums;
 }
 

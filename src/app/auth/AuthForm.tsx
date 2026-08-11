@@ -15,7 +15,13 @@ import { createClient, isConfigured } from '@/lib/supabase/client.ts';
  *
  * A code rather than a magic link: on a phone, a link bounces you out to a mail
  * app and back, and often into a different browser without the session.
+ *
+ * The code's length is a Supabase project setting (6 by default, up to 10), so
+ * nothing here hard-codes it. Pinning the input to six silently truncated an
+ * eight-digit code and left the button disabled with no explanation.
  */
+const MIN_CODE = 6;
+const MAX_CODE = 10;
 type Method = 'email' | 'phone';
 type Stage = 'identify' | 'code';
 
@@ -97,7 +103,7 @@ export default function AuthForm({
       <>
         <p className="step-label">Step 2 of 2</p>
         <h1>Enter the code</h1>
-        <p className="lede">We sent six digits to {identifier}. It expires in a few minutes.</p>
+        <p className="lede">We sent a code to {identifier}. It expires in a few minutes.</p>
 
         <form onSubmit={verify} style={{ marginTop: 22 }}>
           <input
@@ -105,15 +111,15 @@ export default function AuthForm({
             inputMode="numeric"
             autoComplete="one-time-code"
             pattern="[0-9]*"
-            maxLength={6}
-            placeholder="000000"
+            maxLength={MAX_CODE}
+            placeholder="——————"
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            aria-label="Six-digit code"
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, MAX_CODE))}
+            aria-label="Sign-in code"
             autoFocus
           />
           {error && <p className="err">{error}</p>}
-          <button className="btn" type="submit" disabled={pending || code.length < 6}>
+          <button className="btn" type="submit" disabled={pending || code.length < MIN_CODE}>
             {pending ? 'Checking…' : 'Continue'}
           </button>
         </form>
@@ -134,7 +140,7 @@ export default function AuthForm({
       <p className="step-label">Step 1 of 2</p>
       <h1>Sign in</h1>
       <p className="lede">
-        No password. We send a six-digit code and you are in.
+        No password. We email you a code and you are in.
       </p>
       {linkFailed && (
         <p className="err">
