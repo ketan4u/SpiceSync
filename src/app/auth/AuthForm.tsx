@@ -19,7 +19,15 @@ import { createClient, isConfigured } from '@/lib/supabase/client.ts';
 type Method = 'email' | 'phone';
 type Stage = 'identify' | 'code';
 
-export default function AuthForm({ phoneEnabled, next }: { phoneEnabled: boolean; next: string }) {
+export default function AuthForm({
+  phoneEnabled,
+  next,
+  linkFailed,
+}: {
+  phoneEnabled: boolean;
+  next: string;
+  linkFailed?: boolean;
+}) {
   const router = useRouter();
   const [method, setMethod] = useState<Method>('email');
   const [stage, setStage] = useState<Stage>('identify');
@@ -46,9 +54,16 @@ export default function AuthForm({ phoneEnabled, next }: { phoneEnabled: boolean
     e.preventDefault();
     setPending(true);
     setError(null);
+    // If the template sends a link rather than a code, it must come back to
+    // our callback route — the default lands on the site root, which cannot
+    // complete the exchange.
+    const emailRedirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error: err } =
       method === 'email'
-        ? await supabase.auth.signInWithOtp({ email: identifier.trim().toLowerCase() })
+        ? await supabase.auth.signInWithOtp({
+            email: identifier.trim().toLowerCase(),
+            options: { emailRedirectTo },
+          })
         : await supabase.auth.signInWithOtp({ phone: identifier.trim() });
     setPending(false);
     if (err) {
@@ -121,6 +136,12 @@ export default function AuthForm({ phoneEnabled, next }: { phoneEnabled: boolean
       <p className="lede">
         No password. We send a six-digit code and you are in.
       </p>
+      {linkFailed && (
+        <p className="err">
+          That sign-in link did not work. It may have expired, been used already, or been opened
+          in a different browser from the one that requested it.
+        </p>
+      )}
 
       {phoneEnabled && (
         <div className="tiles" style={{ marginTop: 20, marginBottom: 14 }}>

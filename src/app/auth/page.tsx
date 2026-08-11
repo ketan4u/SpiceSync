@@ -8,9 +8,9 @@ export const metadata = { title: 'Sign in — SpiceSync' };
 export default async function AuthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, error } = await searchParams;
 
   // Only redirect an already-signed-in user when Supabase is actually
   // configured; otherwise this page is the one that explains why it is not.
@@ -29,6 +29,7 @@ export default async function AuthPage({
       <AuthForm
         phoneEnabled={process.env.AUTH_PHONE_ENABLED === 'true'}
         next={next ?? '/onboarding'}
+        linkFailed={error === 'link'}
       />
     </main>
   );
