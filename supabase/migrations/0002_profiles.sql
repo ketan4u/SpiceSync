@@ -91,31 +91,23 @@ create policy "own profile deletable"
   on public.profiles for delete to authenticated
   using (auth.uid() = id);
 
--- Other people's rows: readable only once they have finished onboarding, and
--- only by someone who has finished theirs. Browsing is a privilege of
--- participating, which also stops a half-built account scraping the pool.
-drop policy if exists "finished profiles readable by finished members" on public.profiles;
-create policy "finished profiles readable by finished members"
-  on public.profiles for select to authenticated
-  using (
-    onboarding_complete
-    and exists (
-      select 1 from public.profiles me
-      where me.id = auth.uid() and me.onboarding_complete
-    )
-  );
-
 /*
-  NOTE ON RAW PSYCH ANSWERS
+  NO CROSS-USER READ POLICY, DELIBERATELY.
 
-  RLS is row-level, not column-level, so the policy above exposes every column
-  of a completed profile — including `psych_answers` and `date_of_birth`. That
-  is more than another user should ever see.
+  You can reach your own row and nothing else. An earlier version of this file
+  added a policy letting members read other finished profiles; it was removed in
+  0003 for two reasons, both worth remembering before anyone adds it back.
 
-  Until the feed is served from a server-side view that projects only the
-  display fields, the client must not query this table directly for other
-  people. Ranking belongs on the server for the same reason. This comment is a
-  standing TODO, not a description of a finished design.
+  It recursed. The USING clause subqueried `profiles`, so evaluating the SELECT
+  policy required a SELECT on the same table, and Postgres aborted the loop.
+  Every write inherited the error, because an upsert reads the conflicting row.
+  A membership check like that has to live in a SECURITY DEFINER function, which
+  bypasses RLS rather than re-entering it.
+
+  And it leaked. RLS is row-level, not column-level, so "readable" meant every
+  column — including raw `psych_answers` and `date_of_birth`. When Explore needs
+  real people, serve them from a server-side view that projects only the display
+  fields, and rank on the server.
 */
 
 create index if not exists profiles_pool_idx

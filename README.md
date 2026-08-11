@@ -194,8 +194,11 @@ Not built: chat, moderation, likes that persist anywhere, and selfie
 *verification* — photos upload but nothing checks them. Explore still reads
 seeded profiles rather than the `profiles` table. Dish art is emoji placeholder.
 
-**Before Explore reads real profiles**, fix the read policy in `0002_profiles.sql`.
-RLS is row-level, so "other finished profiles are readable" currently exposes
-every column of those rows — including raw `psych_answers` and `date_of_birth`.
-The feed must be served from a server-side view that projects only display
-fields, with ranking done on the server.
+**Before Explore reads real profiles**, add a proper access path. There is
+deliberately no cross-user read policy: you can reach your own row and nothing
+else. The first attempt at one recursed (its `USING` clause subqueried the table
+it protected, which broke every write) and it also exposed every column of the
+rows it opened up, because RLS is row-level. Serve the feed from a server-side
+view projecting only display fields, rank on the server, and put any membership
+check in a `SECURITY DEFINER` function so it bypasses RLS rather than
+re-entering it.
