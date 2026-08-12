@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState, useTransition } from 'react';
 import { joinWaitlist } from './actions.ts';
 import { saveQuiz } from '@/lib/quiz-storage.ts';
+import { syncFromDevice } from '../settings/actions.ts';
 import { FOOD_QUESTIONS, type FoodAnswer } from '@/lib/food/food-relationship.ts';
 import { CITIES, joinedMessage } from '@/lib/cities.ts';
 import { getItem, poolFor } from '@/lib/food/food-catalog.ts';
@@ -76,7 +77,7 @@ interface Outcome {
   choices: QuizChoice[];
 }
 
-export default function QuizFlow() {
+export default function QuizFlow({ signedIn = false }: { signedIn?: boolean }) {
   const [step, setStep] = useState<Step>('diet');
   const [dietBand, setDietBand] = useState<DietBand | null>(null);
   const [cuisines, setCuisines] = useState<Cuisine[]>([]);
@@ -86,6 +87,8 @@ export default function QuizFlow() {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [foodAnswers, setFoodAnswers] = useState<FoodAnswer[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
+  /** null while saving, true/false once the profile write has been attempted. */
+  const [savedToProfile, setSavedToProfile] = useState<boolean | null>(null);
 
   // The accumulator is mutable and holds a Set, so it lives in a ref rather
   // than in state. The RNG is seeded on first interaction, not at module load,
@@ -136,8 +139,23 @@ export default function QuizFlow() {
         foodAnswers: answers,
       });
       setStep('result');
+
+      // Retaking the quiz used to change only the copy held on the device, so
+      // matching carried on using the old vector until the user happened to
+      // visit settings and notice the prompt. If there is an account, write it.
+      if (signedIn) {
+        setSavedToProfile(null);
+        void syncFromDevice({
+          dietBand: result.dietBand,
+          declaredCuisines: result.declaredCuisines,
+          taste: result.vector,
+          foodLabel: result.label,
+          representativeDish: result.dishName,
+          foodAnswers: answers,
+        }).then((r) => setSavedToProfile(r.ok));
+      }
     },
-    [],
+    [signedIn],
   );
 
   const startRounds = useCallback(() => {
@@ -367,7 +385,14 @@ export default function QuizFlow() {
 
   // --------------------------------------------------------------- result
   if (step === 'result' && outcome) {
-    return <Result outcome={outcome} onRestart={restart} />;
+    return (
+      <Result
+        outcome={outcome}
+        onRestart={restart}
+        signedIn={signedIn}
+        savedToProfile={savedToProfile}
+      />
+    );
   }
 
   return null;
@@ -387,7 +412,17 @@ type JoinState =
   | { status: 'joined'; already?: boolean; city: string }
   | { status: 'error'; message: string };
 
-function Result({ outcome, onRestart }: { outcome: Outcome; onRestart: () => void }) {
+function Result({
+  outcome,
+  onRestart,
+  signedIn,
+  savedToProfile,
+}: {
+  outcome: Outcome;
+  onRestart: () => void;
+  signedIn: boolean;
+  savedToProfile: boolean | null;
+}) {
   const [email, setEmail] = useState('');
   const [city, setCity] = useState('');
   const [join, setJoin] = useState<JoinState>({ status: 'idle' });
@@ -484,19 +519,29 @@ function Result({ outcome, onRestart }: { outcome: Outcome; onRestart: () => voi
         })}
       </div>
 
-      <p className="note">
-        This is where matching starts, not ends. SpiceSync weighs how you eat alongside how you
-        handle a disagreement, how fast you like things to move, and what you will not compromise
-        on — and it tells you which of those you actually share with someone. That second half is
-        twelve situations, about ninety seconds, and you can stop whenever.
-      </p>
+      {signedIn ? (
+        <p className="note">
+          {savedToProfile === null && 'Saving this to your profile…'}
+          {savedToProfile === true &&
+            'Saved to your profile. Matching now uses this, not your old answers.'}
+          {savedToProfile === false &&
+            'We could not save this to your profile. Your result is on this device — open settings and apply it from there.'}
+        </p>
+      ) : (
+        <p className="note">
+          This is where matching starts, not ends. SpiceSync weighs how you eat alongside how you
+          handle a disagreement, how fast you like things to move, and what you will not compromise
+          on — and it tells you which of those you actually share with someone. That second half is
+          twelve situations, about ninety seconds, and you can stop whenever.
+        </p>
+      )}
 
       <div className="stack">
         <button className="btn" onClick={share}>
           Share your identity
         </button>
 
-        {join.status === 'joined' ? (
+        {signedIn ? null : join.status === 'joined' ? (
           <p className="ok">
             {join.already ? 'You were already on the list — we have you.' : joinedMessage(join.city)}
           </p>
@@ -545,13 +590,26 @@ function Result({ outcome, onRestart }: { outcome: Outcome; onRestart: () => voi
           </>
         )}
 
-        <a className="btn btn-ghost" href="/questions" style={{ textDecoration: 'none' }}>
-          Answer twelve questions
-        </a>
+        {signedIn ? (
+          <>
+            <a className="btn" href="/settings" style={{ textDecoration: 'none' }}>
+              Back to settings
+            </a>
+            <a className="btn btn-ghost" href="/explore" style={{ textDecoration: 'none' }}>
+              See your matches
+            </a>
+          </>
+        ) : (
+          <>
+            <a className="btn btn-ghost" href="/questions" style={{ textDecoration: 'none' }}>
+              Answer twelve questions
+            </a>
 
-        <a className="btn btn-ghost" href="/explore" style={{ textDecoration: 'none' }}>
-          See who you&apos;d match with
-        </a>
+            <a className="btn btn-ghost" href="/explore" style={{ textDecoration: 'none' }}>
+              See who you&apos;d match with
+            </a>
+          </>
+        )}
 
         <button className="btn-text" style={{ margin: '0 auto', display: 'block' }} onClick={onRestart}>
           Take it again
