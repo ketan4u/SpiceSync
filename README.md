@@ -210,7 +210,14 @@ can close a report they filed. Review the queue with the service-role key:
 select * from reports where status = 'open' order by created_at desc;
 ```
 
-Not built: messaging, a moderation UI (the queue is SQL for now), and selfie
+Matches can talk. Messages arrive over Supabase Realtime, and the right to send
+one is decided in the database: the insert policy calls `is_matched_with`, a
+SECURITY DEFINER function needed because the likes policy deliberately hides who
+liked you. A conversation exists only while the match does — unmatching or
+blocking takes the history with it, for both people, which is what stops someone
+carrying on at a person who has withdrawn.
+
+Not built: a moderation UI (the queue is SQL for now), and selfie
 *verification* — photos upload but nothing checks them. The dealbreaker gate has
 nothing to act on because Section 1's non-negotiables are not collected yet.
 Dish art is emoji placeholder.

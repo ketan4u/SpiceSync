@@ -39,7 +39,8 @@ export default async function MatchesPage() {
             ))}
           </div>
           <p className="note">
-            Messaging is not built yet. This is where a conversation will start.
+            Tap someone to start talking. A conversation lives only as long as the match does —
+            unmatching or blocking takes it with them, for both of you.
           </p>
         </>
       )}

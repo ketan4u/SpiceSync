@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SafetyMenu from '../SafetyMenu.tsx';
 import type { MatchSummary } from '@/lib/match/pool.ts';
@@ -17,8 +18,10 @@ export default function MatchRow({ match }: { match: MatchSummary }) {
         )}
       </div>
       <div className="match-body">
-        <div className="option-title">{match.name}</div>
-        {match.foodLabel && <div className="option-sub">{match.foodLabel}</div>}
+        <Link href={`/matches/${match.id}`} className="match-link">
+          <span className="option-title">{match.name}</span>
+          {match.foodLabel && <span className="option-sub">{match.foodLabel}</span>}
+        </Link>
         <SafetyMenu
           userId={match.id}
           name={match.name}

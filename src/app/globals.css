@@ -992,3 +992,89 @@ p {
   margin: 6px 0 0;
   display: inline-block;
 }
+
+/* ---------------------------------------------------------------- messages */
+
+.thread-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 18px 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.thread-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-faint);
+}
+
+.bubble {
+  max-width: 78%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.bubble.mine {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-bottom-right-radius: 5px;
+}
+
+.bubble.theirs {
+  align-self: flex-start;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-bottom-left-radius: 5px;
+}
+
+.composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding-top: 8px;
+}
+
+.composer .text-input {
+  margin-bottom: 0;
+}
+
+.composer .btn {
+  width: auto;
+  padding-inline: 22px;
+}
+
+.match-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.match-link .option-title,
+.match-link .option-sub {
+  display: block;
+}
+
+.match-link:hover .option-title {
+  color: var(--accent);
+}
