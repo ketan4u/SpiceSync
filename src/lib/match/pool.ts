@@ -118,6 +118,7 @@ export async function getFeed(userId: string, limit = 40): Promise<Feed> {
     .from('profiles')
     .select(SELECT_COLUMNS)
     .eq('onboarding_complete', true)
+    .is('suspended_at', null)
     .limit(500);
 
   const candidates = (rows ?? [])
@@ -231,6 +232,7 @@ export async function getMatches(userId: string): Promise<MatchSummary[]> {
   const { data: rows } = await admin
     .from('profiles')
     .select('id,name,food_label,photo_paths')
+    .is('suspended_at', null)
     .in('id', visible);
 
   return Promise.all(

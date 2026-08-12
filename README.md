@@ -228,8 +228,20 @@ Retaking the quiz while signed in only updates the copy on the device, so
 settings offers to apply it. Without that, someone could retake the quiz, see a
 new food identity, and go on being matched on the old one indefinitely.
 
-Not built: a moderation UI (the queue is SQL for now), and selfie
-*verification* — photos upload but nothing checks them. The dealbreaker gate has
+`/admin` is the moderation queue. Access is an env allowlist — `ADMIN_EMAILS`,
+comma separated — rather than a column, so there is nothing in the database to
+escalate to and no code path in the app can grant it. Unset means nobody. Every
+server action re-checks it, because a server action is a public endpoint and
+guarding only the page would leave moderation one crafted request away from
+anyone. A non-admin gets a 404, not a refusal, so nobody learns the page exists.
+
+Suspending does two things and needs both: a column that takes the account out
+of every feed, and an auth ban that actually revokes sign-in — a flag on a
+profile row cannot stop somebody signing in. It is reversible, deliberately,
+because you are acting on one person's account over another person's word.
+Deleting an account is not available to moderators.
+
+Not built: selfie *verification* — photos upload but nothing checks them. The dealbreaker gate has
 nothing to act on because Section 1's non-negotiables are not collected yet.
 Dish art is emoji placeholder.
 

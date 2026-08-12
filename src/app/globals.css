@@ -1153,3 +1153,89 @@ p {
     color: #fff;
   }
 }
+
+/* -------------------------------------------------------------- moderation */
+
+.report {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  padding: 15px 16px;
+  margin-bottom: 11px;
+}
+
+.report[data-status='dismissed'],
+.report[data-status='actioned'] {
+  opacity: 0.62;
+}
+
+.report-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.report-reason {
+  font-weight: 650;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.report-status {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+
+.report-meta {
+  font-size: 13.5px;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+  line-height: 1.55;
+}
+
+.report-meta strong {
+  color: var(--ink);
+}
+
+.report-flag {
+  display: inline-block;
+  margin-left: 7px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.report-flag.warn {
+  background: #c0392b;
+  color: #fff;
+}
+
+.report-detail {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+}
+
+.report-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.report-actions .btn {
+  width: auto;
+  padding: 11px 18px;
+  font-size: 14px;
+}
