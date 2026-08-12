@@ -1078,3 +1078,78 @@ p {
 .match-link:hover .option-title {
   color: var(--accent);
 }
+
+/* ---------------------------------------------------------------- settings */
+
+.settings-email {
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.settings-h {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin: 34px 0 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.settings-h.danger {
+  color: #c0392b;
+}
+
+@media (prefers-color-scheme: dark) {
+  .settings-h.danger {
+    color: #ff8a75;
+  }
+}
+
+.settings-note {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  margin: 0 0 12px;
+}
+
+.age-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.age-range .text-input {
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.age-range span {
+  font-size: 14px;
+  color: var(--ink-faint);
+}
+
+.blocked-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  margin-bottom: 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg-elev);
+  font-size: 15px;
+}
+
+.btn-danger {
+  background: #c0392b;
+  color: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .btn-danger {
+    background: #a83226;
+    color: #fff;
+  }
+}

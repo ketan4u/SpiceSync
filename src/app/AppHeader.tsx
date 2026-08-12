@@ -33,6 +33,7 @@ export default async function AppHeader() {
           <>
             <Link href="/explore">Explore</Link>
             <Link href="/matches">Matches</Link>
+            <Link href="/settings">Settings</Link>
             <form action={signOut}>
               <button type="submit" className="nav-signout">Sign out</button>
             </form>

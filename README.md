@@ -217,6 +217,17 @@ liked you. A conversation exists only while the match does — unmatching or
 blocking takes the history with it, for both people, which is what stops someone
 carrying on at a person who has withdrawn.
 
+`/settings` lets someone edit their profile, apply a retaken quiz, manage
+blocks, and delete their account. Deletion is a real delete, not a flag: the
+DPDP Act makes erasure a right, and profile, likes, blocks and messages all
+cascade off `auth.users`. Storage objects do *not* cascade and are removed
+explicitly first — a deleted account whose photos survive is the worst outcome
+of pressing that button.
+
+Retaking the quiz while signed in only updates the copy on the device, so
+settings offers to apply it. Without that, someone could retake the quiz, see a
+new food identity, and go on being matched on the old one indefinitely.
+
 Not built: a moderation UI (the queue is SQL for now), and selfie
 *verification* — photos upload but nothing checks them. The dealbreaker gate has
 nothing to act on because Section 1's non-negotiables are not collected yet.
