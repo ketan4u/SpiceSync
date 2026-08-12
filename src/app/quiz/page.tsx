@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppHeader from '../AppHeader.tsx';
 import QuizFlow from './QuizFlow.tsx';
 
 export const metadata = {
@@ -9,10 +9,7 @@ export const metadata = {
 export default function QuizPage() {
   return (
     <main className="shell">
-      <Link href="/" className="wordmark">
-        <span aria-hidden>🌶️</span> SpiceSync
-      </Link>
-      <div style={{ height: 28 }} />
+      <AppHeader />
       <QuizFlow />
     </main>
   );

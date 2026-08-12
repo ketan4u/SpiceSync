@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, useTransition } from 'react';
 import { joinWaitlist } from './actions.ts';
+import { saveQuiz } from '@/lib/quiz-storage.ts';
 import { CITIES, joinedMessage } from '@/lib/cities.ts';
 import { getItem, poolFor } from '@/lib/food/food-catalog.ts';
 import {
@@ -95,7 +96,7 @@ export default function QuizFlow() {
     if (!next) {
       const vector = finalise(current);
       const rep = representativeItem(current, getItem);
-      setOutcome({
+      const result = {
         vector,
         label: foodIdentityLabel(vector),
         traits: tasteTraits(vector),
@@ -104,6 +105,16 @@ export default function QuizFlow() {
         dietBand: current.dietBand,
         declaredCuisines: current.declaredCuisines,
         choices: [...current.choices],
+      };
+      setOutcome(result);
+      // Carries this person into Explore, and later into their account.
+      saveQuiz({
+        dietBand: result.dietBand,
+        declaredCuisines: result.declaredCuisines,
+        vector: result.vector,
+        label: result.label,
+        dishName: result.dishName,
+        dishEmoji: result.dishEmoji,
       });
       setStep('result');
       return;
@@ -401,9 +412,10 @@ function Result({ outcome, onRestart }: { outcome: Outcome; onRestart: () => voi
       </div>
 
       <p className="note">
-        This is where matching starts, not ends. SpiceSync weighs how you eat alongside how you handle
-        a disagreement, how fast you like things to move, and what you will not compromise on — and
-        it tells you which of those you actually share with someone.
+        This is where matching starts, not ends. SpiceSync weighs how you eat alongside how you
+        handle a disagreement, how fast you like things to move, and what you will not compromise
+        on — and it tells you which of those you actually share with someone. That second half is
+        twelve situations, about ninety seconds, and you can stop whenever.
       </p>
 
       <div className="stack">
@@ -460,7 +472,15 @@ function Result({ outcome, onRestart }: { outcome: Outcome; onRestart: () => voi
           </>
         )}
 
-        <button className="btn btn-ghost" onClick={onRestart}>
+        <a className="btn btn-ghost" href="/questions" style={{ textDecoration: 'none' }}>
+          Answer twelve questions
+        </a>
+
+        <a className="btn btn-ghost" href="/explore" style={{ textDecoration: 'none' }}>
+          See who you&apos;d match with
+        </a>
+
+        <button className="btn-text" style={{ margin: '0 auto', display: 'block' }} onClick={onRestart}>
           Take it again
         </button>
       </div>
