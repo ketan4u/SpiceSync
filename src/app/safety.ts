@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '../lib/supabase/server.ts';
+import type { ReportReason } from '../lib/safety-reasons.ts';
 
 /**
  * Blocking, reporting, unmatching.
@@ -9,17 +10,6 @@ import { createClient } from '../lib/supabase/server.ts';
  * proves nobody can act on someone else's behalf. None of them touch the
  * service-role client — there is no reason for these to bypass anything.
  */
-
-export const REPORT_REASONS = [
-  { id: 'fake_profile', label: 'Fake profile or impersonation' },
-  { id: 'harassment', label: 'Harassment or abuse' },
-  { id: 'inappropriate_photos', label: 'Inappropriate photos' },
-  { id: 'underage', label: 'They appear to be under 18' },
-  { id: 'spam_or_scam', label: 'Spam or a scam' },
-  { id: 'other', label: 'Something else' },
-] as const;
-
-export type ReportReason = (typeof REPORT_REASONS)[number]['id'];
 
 type Result = { ok: boolean; error?: string };
 

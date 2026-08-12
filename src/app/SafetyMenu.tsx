@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { REPORT_REASONS, blockUser, reportUser, unmatch, type ReportReason } from './safety.ts';
+import { REPORT_REASONS, type ReportReason } from '@/lib/safety-reasons.ts';
+import { blockUser, reportUser, unmatch } from './safety.ts';
 
 /**
  * Block, report, unmatch.

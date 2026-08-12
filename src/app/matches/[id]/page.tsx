@@ -18,7 +18,30 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   // The database decides whether these two are matched. Reading the messages
   // below would return nothing anyway under the select policy, but failing
   // here gives an honest page instead of an empty conversation.
-  const { data: matched } = await supabase.rpc('is_matched_with', { other: id });
+  const { data: matched, error: rpcError } = await supabase.rpc('is_matched_with', { other: id });
+
+  // A missing function and a genuine non-match are completely different
+  // problems, and rendering both as "Not a match" sent someone to check a
+  // relationship when the real answer was an unapplied migration.
+  if (rpcError) {
+    console.error('[thread] is_matched_with failed', rpcError.message);
+    return (
+      <main className="shell">
+        <AppHeader />
+        <h1>Messaging is not set up</h1>
+        <p className="lede">
+          The database is missing <code>is_matched_with</code>, so the server cannot confirm this
+          match. Apply <code>supabase/migrations/0006_messages.sql</code>. Your match is fine —
+          this is a setup gap.
+        </p>
+        <div className="spacer" />
+        <Link href="/matches" className="btn" style={{ textDecoration: 'none' }}>
+          Back to matches
+        </Link>
+      </main>
+    );
+  }
+
   if (!matched) {
     return (
       <main className="shell">
