@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import { CITIES } from '@/lib/cities.ts';
+import { DEALBREAKERS } from '@/lib/dealbreakers.ts';
 import { INTENTS, INTENT_LABELS, type Intent } from '@/lib/match/types.ts';
 import { createClient } from '@/lib/supabase/client.ts';
 import { useHydrated, useStoredPrefs, useStoredPsych, useStoredQuiz } from '@/lib/quiz-storage.ts';
@@ -25,8 +26,8 @@ const GENDERS = [
   { id: 'non-binary', label: 'Non-binary' },
 ];
 
-type Step = 'about' | 'seeking' | 'intent' | 'place' | 'photos';
-const STEPS: Step[] = ['about', 'seeking', 'intent', 'place', 'photos'];
+type Step = 'about' | 'seeking' | 'intent' | 'place' | 'limits' | 'photos';
+const STEPS: Step[] = ['about', 'seeking', 'intent', 'place', 'limits', 'photos'];
 
 export default function OnboardingFlow({ userId }: { userId: string }) {
   const router = useRouter();
@@ -43,6 +44,8 @@ export default function OnboardingFlow({ userId }: { userId: string }) {
   const [intents, setIntents] = useState<Intent[]>([]);
   const [city, setCity] = useState('');
   const [openToDistance, setOpenToDistance] = useState(false);
+  const [attributes, setAttributes] = useState<string[]>([]);
+  const [nonNegotiables, setNonNegotiables] = useState<string[]>([]);
   const [photoPaths, setPhotoPaths] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +110,8 @@ export default function OnboardingFlow({ userId }: { userId: string }) {
         city,
         openToDistance,
         photoPaths: photoPaths.filter(Boolean),
+        attributes,
+        nonNegotiables,
         dietBand: quiz?.dietBand,
         declaredCuisines: quiz?.declaredCuisines,
         taste: quiz?.vector,
@@ -253,8 +258,52 @@ export default function OnboardingFlow({ userId }: { userId: string }) {
             </span>
           </button>
           <div className="spacer" />
-          <button className="btn" disabled={!city} onClick={() => setStep('photos')}>Continue</button>
+          <button className="btn" disabled={!city} onClick={() => setStep('limits')}>Continue</button>
           <button className="btn-text" style={{ margin: '0 auto', display: 'block' }} onClick={() => setStep('intent')}>
+            Back
+          </button>
+        </>
+      )}
+
+      {step === 'limits' && (
+        <>
+          <p className="step-label">Step 5 of {STEPS.length}</p>
+          <h1>Anything that would rule someone out?</h1>
+          <p className="lede">
+            Both halves matter. What you tick about yourself is what lets other people&apos;s
+            limits work — and theirs only work on you if you have said so too. All optional.
+          </p>
+
+          <p className="step-label" style={{ marginTop: 22 }}>True about me</p>
+          <div className="tiles">
+            {DEALBREAKERS.map((d) => (
+              <button key={d.id} className="tile" data-selected={attributes.includes(d.id)}
+                onClick={() => toggle(attributes, setAttributes, d.id)}
+                aria-pressed={attributes.includes(d.id)}>
+                {d.selfLabel}
+              </button>
+            ))}
+          </div>
+
+          <p className="step-label">I will not date someone who</p>
+          <div className="tiles">
+            {DEALBREAKERS.map((d) => (
+              <button key={d.id} className="tile" data-selected={nonNegotiables.includes(d.id)}
+                onClick={() => toggle(nonNegotiables, setNonNegotiables, d.id)}
+                aria-pressed={nonNegotiables.includes(d.id)}>
+                {d.avoidLabel}
+              </button>
+            ))}
+          </div>
+
+          <p className="consent">
+            A non-negotiable is absolute — it removes people entirely, however well you match
+            otherwise. Use it for things you would actually end a date over.
+          </p>
+
+          <div className="spacer" />
+          <button className="btn" onClick={() => setStep('photos')}>Continue</button>
+          <button className="btn-text" style={{ margin: '0 auto', display: 'block' }} onClick={() => setStep('place')}>
             Back
           </button>
         </>
@@ -262,7 +311,7 @@ export default function OnboardingFlow({ userId }: { userId: string }) {
 
       {step === 'photos' && (
         <>
-          <p className="step-label">Step 5 of {STEPS.length}</p>
+          <p className="step-label">Step 6 of {STEPS.length}</p>
           <h1>Two photos</h1>
           <p className="lede">One of you, and one of a dish you love. Both are optional for now.</p>
 
@@ -284,7 +333,7 @@ export default function OnboardingFlow({ userId }: { userId: string }) {
           <button className="btn" onClick={finish} disabled={pending || uploading}>
             {pending ? 'Saving…' : 'Finish'}
           </button>
-          <button className="btn-text" style={{ margin: '0 auto', display: 'block' }} onClick={() => setStep('place')}>
+          <button className="btn-text" style={{ margin: '0 auto', display: 'block' }} onClick={() => setStep('limits')}>
             Back
           </button>
         </>

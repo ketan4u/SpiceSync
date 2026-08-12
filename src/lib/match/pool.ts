@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createAdminClient } from '../supabase/admin.ts';
+import { sanitiseTags } from '../dealbreakers.ts';
 import { scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
 import type { TasteVector } from '../food/types.ts';
 import { rankFor } from './score.ts';
@@ -46,10 +47,12 @@ interface ProfileRow {
   representative_dish: string | null;
   psych_answers: PsychAnswer[] | null;
   photo_paths: string[] | null;
+  attributes: string[] | null;
+  non_negotiables: string[] | null;
 }
 
 const SELECT_COLUMNS =
-  'id,name,date_of_birth,gender,seeking,intents,city,open_to_distance,age_min,age_max,taste,food_label,representative_dish,psych_answers,photo_paths';
+  'id,name,date_of_birth,gender,seeking,intents,city,open_to_distance,age_min,age_max,taste,food_label,representative_dish,psych_answers,photo_paths,attributes,non_negotiables';
 
 function ageFrom(dob: string): number {
   const birth = new Date(`${dob}T00:00:00Z`);
@@ -77,10 +80,8 @@ function toMatchProfile(row: ProfileRow): MatchProfile | null {
     taste: row.taste,
     representativeDish: row.representative_dish ?? undefined,
     psych: scorePsych(row.psych_answers ?? []),
-    // Section 1's dealbreaker fields are not collected yet, so the gate has
-    // nothing to act on. Wiring them is what makes it meaningful.
-    nonNegotiables: [],
-    attributes: [],
+    nonNegotiables: sanitiseTags(row.non_negotiables),
+    attributes: sanitiseTags(row.attributes),
   };
 }
 

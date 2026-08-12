@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { isKnownCity } from '../../lib/cities.ts';
+import { sanitiseTags } from '../../lib/dealbreakers.ts';
 import { INTENTS, type Intent } from '../../lib/match/types.ts';
 import { createClient } from '../../lib/supabase/server.ts';
 import { createAdminClient } from '../../lib/supabase/admin.ts';
@@ -22,6 +23,8 @@ export async function updateProfile(payload: {
   openToDistance: boolean;
   ageMin: number;
   ageMax: number;
+  attributes: string[];
+  nonNegotiables: string[];
 }): Promise<Result> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -58,6 +61,8 @@ export async function updateProfile(payload: {
       open_to_distance: payload.openToDistance,
       age_min: ageMin,
       age_max: ageMax,
+      attributes: sanitiseTags(payload.attributes),
+      non_negotiables: sanitiseTags(payload.nonNegotiables),
     })
     .eq('id', auth.user.id);
 

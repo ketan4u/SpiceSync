@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { CITIES } from '@/lib/cities.ts';
+import { DEALBREAKERS } from '@/lib/dealbreakers.ts';
 import { INTENTS, INTENT_LABELS, type Intent } from '@/lib/match/types.ts';
 import { useHydrated, useStoredPsych, useStoredQuiz } from '@/lib/quiz-storage.ts';
 import type { BlockedPerson, EditableProfile } from './data.ts';
@@ -30,6 +31,8 @@ export default function SettingsForm({
   const [openToDistance, setOpenToDistance] = useState(profile.openToDistance);
   const [ageMin, setAgeMin] = useState(profile.ageMin);
   const [ageMax, setAgeMax] = useState(profile.ageMax);
+  const [attributes, setAttributes] = useState<string[]>(profile.attributes);
+  const [nonNegotiables, setNonNegotiables] = useState<string[]>(profile.nonNegotiables);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -52,6 +55,7 @@ export default function SettingsForm({
     startTransition(async () => {
       const result = await updateProfile({
         name, gender, seeking, intents, city, openToDistance, ageMin, ageMax,
+        attributes, nonNegotiables,
       });
       if (!result.ok) setError(result.error ?? 'Could not save.');
       else setSaved(true);
@@ -114,6 +118,31 @@ export default function SettingsForm({
           <span className="option-sub">Only when the match is strong, and only if they agreed too</span>
         </span>
       </button>
+
+      <h2 className="settings-h">Non-negotiables</h2>
+      <p className="settings-note">
+        What you tick about yourself is what makes other people&apos;s limits work, and theirs
+        only apply to you if you have said so. A non-negotiable removes people entirely, however
+        well you match otherwise.
+      </p>
+
+      <p className="ask">True about me</p>
+      <div className="tiles">
+        {DEALBREAKERS.map((d) => (
+          <button key={d.id} className="tile" data-selected={attributes.includes(d.id)}
+            onClick={() => setAttributes((p) => p.includes(d.id) ? p.filter((x) => x !== d.id) : [...p, d.id])}
+            aria-pressed={attributes.includes(d.id)}>{d.selfLabel}</button>
+        ))}
+      </div>
+
+      <p className="ask">I will not date someone who</p>
+      <div className="tiles">
+        {DEALBREAKERS.map((d) => (
+          <button key={d.id} className="tile" data-selected={nonNegotiables.includes(d.id)}
+            onClick={() => setNonNegotiables((p) => p.includes(d.id) ? p.filter((x) => x !== d.id) : [...p, d.id])}
+            aria-pressed={nonNegotiables.includes(d.id)}>{d.avoidLabel}</button>
+        ))}
+      </div>
 
       {error && <p className="err">{error}</p>}
       {saved && <p className="ok">Saved.</p>}

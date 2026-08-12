@@ -11,6 +11,7 @@ import { getItem } from '../food/food-catalog.ts';
 import { DEFAULT_ROUNDS, mulberry32, nextPair, representativeItem } from '../food/pair-generator.ts';
 import { applyChoice, createAccumulator, finalise } from '../food/score-taste.ts';
 import { CONTINUOUS_AXES, DIET_BAND_ORDER, type ContinuousAxis, type Cuisine, type FoodItem } from '../food/types.ts';
+import { DEALBREAKERS, sanitiseTags } from '../dealbreakers.ts';
 import { PSYCH_BANK, scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
 import {
   BANNER_THRESHOLD,
@@ -134,6 +135,39 @@ console.log('\n1. GATES ARE ABSOLUTE');
   check('an otherwise perfect match still blocked by a dealbreaker',
     matches.length === 0 && blocked[0]?.blocked === 'dealbreaker',
     'no amount of compatibility overrides a gate');
+}
+
+console.log('\n1b. THE REAL DEALBREAKER VOCABULARY');
+{
+  check('vocabulary is populated', DEALBREAKERS.length >= 8,
+    `${DEALBREAKERS.length} tags, each with a self and an avoid phrasing`);
+
+  const bothPhrasings = DEALBREAKERS.every((d) => d.selfLabel && d.avoidLabel && d.id);
+  check('every tag reads both ways', bothPhrasings,
+    'a tag with only one phrasing cannot be collected on both sides');
+
+  // The categories this product will not sort people by. Their absence is a
+  // decision, so it is asserted rather than left to memory.
+  const excluded = ['caste', 'religion', 'skin', 'complexion', 'community', 'gotra'];
+  const found = DEALBREAKERS.filter((d) =>
+    excluded.some((e) => `${d.id} ${d.selfLabel} ${d.avoidLabel}`.toLowerCase().includes(e)),
+  );
+  check('no caste, religion or complexion filters', found.length === 0,
+    found.length ? found.map((d) => d.id).join(', ') : 'deliberately absent');
+
+  check('unknown tags are dropped', sanitiseTags(['smokes', 'caste_x', 42, 'smokes']).join() === 'smokes',
+    'sanitiseTags keeps known ids only, and de-duplicates');
+
+  // End to end, with a real tag rather than an invented one.
+  const smoker = makeProfile('s1', 41, { gender: 'man', seeking: ['woman'], attributes: sanitiseTags(['smokes']) });
+  const avoider = makeProfile('s2', 42, { gender: 'woman', seeking: ['man'], nonNegotiables: sanitiseTags(['smokes']) });
+  check('a real non-negotiable blocks a real attribute',
+    gateFor(avoider, smoker) === 'dealbreaker' && gateFor(smoker, avoider) === 'dealbreaker',
+    'blocked in both directions');
+
+  const nonSmoker = makeProfile('s3', 43, { gender: 'man', seeking: ['woman'], attributes: [] });
+  check('an undeclared attribute does not block', gateFor(avoider, nonSmoker) === null,
+    'a non-negotiable is inert unless the other side declared it — which is why both are asked');
 }
 
 console.log('\n2. SYMMETRY');

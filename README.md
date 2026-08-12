@@ -68,7 +68,7 @@ this product can ship), and any change to how axis estimates are transformed
 ## Verifying
 
 ```bash
-npm run verify        # 72 checks across four suites
+npm run verify        # 78 checks across four suites
 npm run lint          # ESLint — must be clean
 ```
 
@@ -240,6 +240,18 @@ of every feed, and an auth ban that actually revokes sign-in — a flag on a
 profile row cannot stop somebody signing in. It is reversible, deliberately,
 because you are acting on one person's account over another person's word.
 Deleting an account is not available to moderators.
+
+Non-negotiables are collected in onboarding (skippable) and editable in
+settings, which makes the scorer's dealbreaker gate live. One vocabulary is read
+two ways — "I smoke" and "won't date someone who smokes" — because a
+non-negotiable is inert unless the other person declared the matching attribute.
+
+**Caste, religion and complexion are deliberately not in that vocabulary**, and
+`verify:match` asserts their absence so it cannot drift back in. Each would be
+trivial to add and each is standard on Indian matrimonial platforms; that is the
+reason to leave them out. A structured filter is not a neutral container — it is
+what makes sorting people by those categories fast, repeatable and normal. It is
+a product decision, not a technical limit. Overrule it knowingly.
 
 Not built: selfie *verification* — photos upload but nothing checks them. The dealbreaker gate has
 nothing to act on because Section 1's non-negotiables are not collected yet.

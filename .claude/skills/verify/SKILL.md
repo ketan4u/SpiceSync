@@ -1,12 +1,12 @@
 ---
 name: verify
-description: Run and interpret SpiceSync's verification suites. Use before committing changes to the quiz engine, the food catalog, the psych bank, or the quiz flow — and whenever a check fails and its meaning is not obvious. Explains what each of the 65 checks protects and what a failure actually indicates.
+description: Run and interpret SpiceSync's verification suites. Use before committing changes to the quiz engine, the food catalog, the psych bank, or the quiz flow — and whenever a check fails and its meaning is not obvious. Explains what each of the 78 checks protects and what a failure actually indicates.
 ---
 
 # Verifying SpiceSync
 
 ```bash
-npm run verify          # all four suites, 65 checks
+npm run verify          # all four suites, 78 checks
 npm run verify:quiz     # the estimator
 npm run verify:flow     # the user journey
 npm run verify:match    # the scorer
