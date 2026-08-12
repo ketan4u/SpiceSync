@@ -1,12 +1,11 @@
+import AppHeader from './AppHeader.tsx';
 import Link from 'next/link';
 import { FOOD_CATALOG } from '@/lib/food/food-catalog.ts';
 
 export default function Home() {
   return (
     <main className="shell">
-      <Link href="/" className="wordmark">
-        <span aria-hidden>🌶️</span> SpiceSync
-      </Link>
+      <AppHeader />
 
       <div className="spacer" />
 

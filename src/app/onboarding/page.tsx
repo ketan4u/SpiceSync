@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppHeader from '../AppHeader.tsx';
 import { redirect } from 'next/navigation';
 import OnboardingFlow from './OnboardingFlow.tsx';
 import { createClient } from '@/lib/supabase/server.ts';
@@ -22,10 +22,7 @@ export default async function OnboardingPage() {
 
   return (
     <main className="shell">
-      <Link href="/" className="wordmark">
-        <span aria-hidden>🌶️</span> SpiceSync
-      </Link>
-      <div style={{ height: 26 }} />
+      <AppHeader />
       <OnboardingFlow userId={auth.user.id} />
     </main>
   );

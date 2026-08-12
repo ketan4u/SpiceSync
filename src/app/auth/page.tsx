@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppHeader from '../AppHeader.tsx';
 import { redirect } from 'next/navigation';
 import AuthForm from './AuthForm.tsx';
 import { createClient } from '@/lib/supabase/server.ts';
@@ -22,10 +22,7 @@ export default async function AuthPage({
 
   return (
     <main className="shell">
-      <Link href="/" className="wordmark">
-        <span aria-hidden>🌶️</span> SpiceSync
-      </Link>
-      <div style={{ height: 26 }} />
+      <AppHeader />
       <AuthForm
         phoneEnabled={process.env.AUTH_PHONE_ENABLED === 'true'}
         next={next ?? '/onboarding'}

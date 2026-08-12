@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import AppHeader from '../AppHeader.tsx';
 import ExploreFeed from './ExploreFeed.tsx';
 import RealFeed from './RealFeed.tsx';
 import { getFeed } from '@/lib/match/pool.ts';
@@ -33,10 +34,7 @@ export default async function ExplorePage() {
 
   return (
     <main className="shell">
-      <Link href="/" className="wordmark">
-        <span aria-hidden>🌶️</span> SpiceSync
-      </Link>
-      <div style={{ height: 22 }} />
+      <AppHeader />
 
       {signedIn && cards ? (
         <RealFeed initial={cards} />

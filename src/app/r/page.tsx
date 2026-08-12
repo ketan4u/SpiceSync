@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import AppHeader from '../AppHeader.tsx';
 import type { Metadata } from 'next';
 
 /**
@@ -27,9 +28,7 @@ export default async function SharedResult({ searchParams }: Params) {
   const { l = 'Something delicious', e = '🍽️', d = '' } = await searchParams;
   return (
     <main className="shell">
-      <Link href="/" className="wordmark">
-        <span aria-hidden>🌶️</span> SpiceSync
-      </Link>
+      <AppHeader />
       <div className="spacer" />
       <p className="step-label">Their food identity</p>
       <div className="identity">
