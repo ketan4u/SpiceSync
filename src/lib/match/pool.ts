@@ -112,6 +112,8 @@ export async function getFeed(userId: string, limit = 40): Promise<Feed> {
   const seen = new Set((judged ?? []).map((r) => r.liked_id as string));
   seen.add(userId);
 
+  for (const id of await blockedEitherWay(userId)) seen.add(id);
+
   const { data: rows } = await admin
     .from('profiles')
     .select(SELECT_COLUMNS)
@@ -150,6 +152,27 @@ export async function getFeed(userId: string, limit = 40): Promise<Feed> {
       }),
     ),
   };
+}
+
+/**
+ * Everyone invisible to this user because of a block, in either direction.
+ *
+ * Symmetry is the point. If it only hid people you blocked, the person you
+ * blocked would keep seeing you — and if it only hid people who blocked you,
+ * blocking would do nothing for the blocker. Either half alone also leaks: a
+ * one-directional block is detectable by whoever is still being shown.
+ */
+async function blockedEitherWay(userId: string): Promise<string[]> {
+  const admin = createAdminClient();
+  if (!admin) return [];
+  const [mine, theirs] = await Promise.all([
+    admin.from('blocks').select('blocked_id').eq('blocker_id', userId),
+    admin.from('blocks').select('blocker_id').eq('blocked_id', userId),
+  ]);
+  return [
+    ...(mine.data ?? []).map((r) => r.blocked_id as string),
+    ...(theirs.data ?? []).map((r) => r.blocker_id as string),
+  ];
 }
 
 /**
@@ -201,10 +224,14 @@ export async function getMatches(userId: string): Promise<MatchSummary[]> {
   const mutual = (back ?? []).map((r) => r.liker_id as string);
   if (mutual.length === 0) return [];
 
+  const hidden = new Set(await blockedEitherWay(userId));
+  const visible = mutual.filter((id) => !hidden.has(id));
+  if (visible.length === 0) return [];
+
   const { data: rows } = await admin
     .from('profiles')
     .select('id,name,food_label,photo_paths')
-    .in('id', mutual);
+    .in('id', visible);
 
   return Promise.all(
     (rows ?? []).map(async (r) => {

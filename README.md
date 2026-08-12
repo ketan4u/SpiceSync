@@ -196,9 +196,24 @@ Explore reads real accounts when you are signed in and onboarded, and falls back
 to the seeded demo otherwise, so the public quiz still leads somewhere. Likes
 persist, and a mutual like is a match.
 
-Not built: messaging, moderation, and selfie *verification* — photos upload but
-nothing checks them. The dealbreaker gate has nothing to act on because Section
-1's non-negotiables are not collected yet. Dish art is emoji placeholder.
+Blocking, reporting and unmatching work. A block hides both people from each
+other — one-directional blocking is detectable by whoever is still being shown,
+which is worse than none. Reporting blocks as a side effect and says so before
+the tap. The blocked party cannot read the block: their RLS policy only matches
+rows where they are the blocker, and the feed filter runs server-side.
+
+`reports` has **no** select policy at all, not even for the reporter. Reading
+rows back would be a way to probe whether someone has been reported, and nobody
+can close a report they filed. Review the queue with the service-role key:
+
+```sql
+select * from reports where status = 'open' order by created_at desc;
+```
+
+Not built: messaging, a moderation UI (the queue is SQL for now), and selfie
+*verification* — photos upload but nothing checks them. The dealbreaker gate has
+nothing to act on because Section 1's non-negotiables are not collected yet.
+Dish art is emoji placeholder.
 
 **How the feed reads other people.** There is deliberately no cross-user read
 policy — through the ordinary client you can reach your own row and nothing

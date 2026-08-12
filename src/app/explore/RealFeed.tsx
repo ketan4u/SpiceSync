@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import type { FeedCard } from '@/lib/match/pool.ts';
+import SafetyMenu from '../SafetyMenu.tsx';
 import { recordVerdict } from './actions.ts';
 
 /**
@@ -134,6 +135,13 @@ export default function RealFeed({ initial }: { initial: FeedCard[] }) {
           Like
         </button>
       </div>
+
+      <SafetyMenu
+        key={current.id}
+        userId={current.id}
+        name={current.name}
+        onDone={() => setIndex((i) => i + 1)}
+      />
     </>
   );
 }

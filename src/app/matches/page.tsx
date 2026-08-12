@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import AppHeader from '../AppHeader.tsx';
+import MatchRow from './MatchRow.tsx';
 import { redirect } from 'next/navigation';
 import { getMatches } from '@/lib/match/pool.ts';
 import { createClient } from '@/lib/supabase/server.ts';
@@ -34,20 +35,7 @@ export default async function MatchesPage() {
           <p className="lede">{matches.length} {matches.length === 1 ? 'person' : 'people'} said yes back.</p>
           <div className="match-list">
             {matches.map((m) => (
-              <div key={m.id} className="match-row">
-                <div className="match-photo">
-                  {m.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.photoUrl} alt={m.name} />
-                  ) : (
-                    <span aria-hidden>{m.name.charAt(0)}</span>
-                  )}
-                </div>
-                <div>
-                  <div className="option-title">{m.name}</div>
-                  {m.foodLabel && <div className="option-sub">{m.foodLabel}</div>}
-                </div>
-              </div>
+              <MatchRow key={m.id} match={m} />
             ))}
           </div>
           <p className="note">
