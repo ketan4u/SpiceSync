@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { isAdminEmail } from '@/lib/admin/guard.ts';
 import { signOut } from './actions.ts';
 import { createClient } from '@/lib/supabase/server.ts';
 
@@ -31,6 +32,7 @@ export default async function AppHeader() {
       <nav className="nav-links">
         {email ? (
           <>
+            {isAdminEmail(email) && <Link href="/admin">Moderation</Link>}
             <Link href="/explore">Explore</Link>
             <Link href="/matches">Matches</Link>
             <Link href="/settings">Settings</Link>

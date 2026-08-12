@@ -228,6 +228,12 @@ Retaking the quiz while signed in only updates the copy on the device, so
 settings offers to apply it. Without that, someone could retake the quiz, see a
 new food identity, and go on being matched on the old one indefinitely.
 
+Signing in lands on `/after-signin`, which decides where you belong: an address
+on the allowlist goes to moderation, a finished profile to Explore, anyone else
+to onboarding. Only the server knows enough to make that call, and hardcoding
+onboarding as the destination meant a moderator had to declare who they were
+looking for before they could read a report.
+
 `/admin` is the moderation queue. Access is an env allowlist — `ADMIN_EMAILS`,
 comma separated — rather than a column, so there is nothing in the database to
 escalate to and no code path in the app can grant it. Unset means nobody. Every
