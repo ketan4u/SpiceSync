@@ -24,7 +24,7 @@ import {
  * chicken vs idli" tells you nothing — it differs on all four axes at once.
  */
 
-export type ProbeTarget = ContinuousAxis | 'cuisine' | 'setting';
+export type ProbeTarget = ContinuousAxis | 'cuisine';
 
 /** Deterministic PRNG so quiz runs are reproducible in tests and replayable in
  *  the admin debug view. Seed per session, not per user, so a retake varies. */
@@ -56,7 +56,12 @@ function meanContrast(a: FoodItem, b: FoodItem, axes: ContinuousAxis[]): number 
   return axes.reduce((sum, axis) => sum + Math.abs(a[axis] - b[axis]), 0) / axes.length;
 }
 
-/** How much evidence each target currently has, 0..1. Lower = probe it next. */
+/**
+ * How much evidence each target currently has, 0..1. Lower = probe it next.
+ *
+ * `setting` is absent deliberately. It is stated in Section 2b now, so spending
+ * a tap on it would buy a weaker version of an answer we already have.
+ */
 function evidenceByTarget(acc: TasteAccumulator): Record<ProbeTarget, number> {
   const v = finalise(acc);
   return {
@@ -65,7 +70,6 @@ function evidenceByTarget(acc: TasteAccumulator): Record<ProbeTarget, number> {
     novelty: v.confidence.novelty,
     sweetness: v.confidence.sweetness,
     cuisine: v.confidence.cuisine,
-    setting: v.confidence.setting,
   };
 }
 
@@ -103,11 +107,6 @@ function scoreCuisinePair(
   return -noise - 0.15 * (seenA + seenB) + declaredBonus;
 }
 
-function scoreSettingPair(a: FoodItem, b: FoodItem): number {
-  if (a.setting === b.setting) return -Infinity;
-  return -meanContrast(a, b, CONTINUOUS_AXES);
-}
-
 /**
  * Pick the next pair, or null if the pool is exhausted.
  * `round` is 1-indexed.
@@ -142,8 +141,6 @@ export function nextPair(
       let score: number;
       if (target === 'cuisine') {
         score = scoreCuisinePair(a, b, acc.cuisine, acc.declaredCuisines);
-      } else if (target === 'setting') {
-        score = scoreSettingPair(a, b);
       } else {
         score = scoreContinuousPair(a, b, target, estimates[target]);
       }

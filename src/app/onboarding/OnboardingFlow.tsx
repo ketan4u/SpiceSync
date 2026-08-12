@@ -118,6 +118,7 @@ export default function OnboardingFlow({ userId }: { userId: string }) {
         foodLabel: quiz?.label,
         representativeDish: quiz?.dishName,
         psychAnswers: psych,
+        foodAnswers: quiz?.foodAnswers,
       });
       if (!result.ok) {
         setError(result.reason);

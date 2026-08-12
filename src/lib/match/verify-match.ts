@@ -10,6 +10,7 @@
 import { getItem } from '../food/food-catalog.ts';
 import { DEFAULT_ROUNDS, mulberry32, nextPair, representativeItem } from '../food/pair-generator.ts';
 import { applyChoice, createAccumulator, finalise } from '../food/score-taste.ts';
+import { FOOD_QUESTIONS, type FoodAnswer } from '../food/food-relationship.ts';
 import { CONTINUOUS_AXES, DIET_BAND_ORDER, type ContinuousAxis, type Cuisine, type FoodItem } from '../food/types.ts';
 import { DEALBREAKERS, sanitiseTags } from '../dealbreakers.ts';
 import { PSYCH_BANK, scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
@@ -18,7 +19,9 @@ import {
   MIN_POOL_FOR_SCORES,
   gateFor,
   rankFor,
+  pairWeights,
   scorePair,
+  whyChips,
 } from './score.ts';
 import type { Intent, MatchProfile } from './types.ts';
 
@@ -54,6 +57,11 @@ function makeProfile(id: string, seed: number, over: Partial<MatchProfile> = {})
     applyChoice(acc, { round, winnerId: winner.id, loserId: loser.id, probing: pair.probing }, winner, loser);
   }
 
+  const foodAnswers: FoodAnswer[] = FOOD_QUESTIONS.map((q) => ({
+    questionId: q.id,
+    optionId: q.options[Math.floor(rng() * q.options.length)].id,
+  }));
+
   const answers: PsychAnswer[] = PSYCH_BANK.filter((q) => q.tier === 'core').map((q) => ({
     questionId: q.id,
     optionId: q.options[Math.floor(rng() * q.options.length)].id,
@@ -70,7 +78,7 @@ function makeProfile(id: string, seed: number, over: Partial<MatchProfile> = {})
     city: 'bangalore',
     intents: ['long_term'],
     openToDistance: false,
-    taste: finalise(acc),
+    taste: finalise(acc, foodAnswers),
     representativeDish: representativeItem(acc, getItem)?.name,
     psych: scorePsych(answers),
     nonNegotiables: [],
@@ -168,6 +176,37 @@ console.log('\n1b. THE REAL DEALBREAKER VOCABULARY');
   const nonSmoker = makeProfile('s3', 43, { gender: 'man', seeking: ['woman'], attributes: [] });
   check('an undeclared attribute does not block', gateFor(avoider, nonSmoker) === null,
     'a non-negotiable is inert unless the other side declared it — which is why both are asked');
+}
+
+console.log('\n1c. PER-PAIR FOOD WEIGHTING');
+{
+  const heavy = makeProfile('h', 61, { gender: 'man', seeking: ['woman'] });
+  const light = makeProfile('l', 62, { gender: 'woman', seeking: ['man'] });
+  heavy.taste = { ...heavy.taste, foodWeight: 0.9 };
+  light.taste = { ...light.taste, foodWeight: 0.12 };
+
+  const w = pairWeights(heavy, light);
+  const wReverse = pairWeights(light, heavy);
+  check('weighting is symmetric', Math.abs(w.food - wReverse.food) < 1e-12,
+    `food ${w.food.toFixed(3)} either way`);
+  check('weights sum to one', Math.abs(w.food + w.psych + w.profile - 1) < 1e-12,
+    `${w.food.toFixed(2)} food · ${w.psych.toFixed(2)} psych · ${w.profile.toFixed(2)} profile`);
+
+  const bothHeavy = pairWeights(heavy, { ...heavy, id: 'h2' });
+  const bothLight = pairWeights(light, { ...light, id: 'l2' });
+  check('caring more about food weights it more',
+    bothHeavy.food > w.food && w.food > bothLight.food,
+    `${bothLight.food.toFixed(2)} < ${w.food.toFixed(2)} < ${bothHeavy.food.toFixed(2)}`);
+
+  // Neither half may be squeezed out, however emphatically someone answered.
+  check('neither half can vanish',
+    bothHeavy.psych >= 0.15 && bothLight.food >= 0.15,
+    `psych floors at ${bothHeavy.psych.toFixed(2)}, food at ${bothLight.food.toFixed(2)}`);
+
+  const chips = whyChips(heavy, light, 6);
+  check('a large gap in food importance is said out loud',
+    chips.some((c) => c.includes('food matters much more')),
+    'averaging alone would hide a real incompatibility');
 }
 
 console.log('\n2. SYMMETRY');

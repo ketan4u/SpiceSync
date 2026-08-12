@@ -9,6 +9,7 @@ import { createClient } from '../../lib/supabase/server.ts';
 import { createAdminClient } from '../../lib/supabase/admin.ts';
 import type { PsychAnswer } from '../../lib/psych/psych-bank.ts';
 import type { TasteVector } from '../../lib/food/types.ts';
+import { sanitiseFoodAnswers, type FoodAnswer } from '../../lib/food/food-relationship.ts';
 
 type Result = { ok: boolean; error?: string };
 
@@ -88,6 +89,7 @@ export async function syncFromDevice(payload: {
   foodLabel?: string;
   representativeDish?: string;
   psychAnswers?: PsychAnswer[];
+  foodAnswers?: FoodAnswer[];
 }): Promise<Result> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -100,6 +102,9 @@ export async function syncFromDevice(payload: {
     update.declared_cuisines = payload.declaredCuisines ?? [];
     update.food_label = payload.foodLabel ?? null;
     update.representative_dish = payload.representativeDish ?? null;
+    update.food_answers = sanitiseFoodAnswers(payload.foodAnswers);
+    update.food_archetype = payload.taste.archetype ?? null;
+    update.food_weight = payload.taste.foodWeight ?? null;
   }
   if (payload.psychAnswers && payload.psychAnswers.length > 0) {
     update.psych_answers = payload.psychAnswers;

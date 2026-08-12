@@ -68,7 +68,7 @@ this product can ship), and any change to how axis estimates are transformed
 ## Verifying
 
 ```bash
-npm run verify        # 78 checks across four suites
+npm run verify        # 88 checks across four suites
 npm run lint          # ESLint — must be clean
 ```
 
@@ -96,6 +96,7 @@ Each of these caught a real bug during development. Please keep them green.
 ```
 src/lib/food/          the Section 2 engine
   food-catalog.ts        89 dishes, tagged along every axis the quiz measures
+  food-relationship.ts   Section 2b — what food MEANS to someone
   pair-generator.ts      calibration + adaptive pair selection
   score-taste.ts         choices -> taste vector -> display label
   pool-calibration.ts    GENERATED — see below
@@ -128,6 +129,30 @@ last dish standing is "your food". That is order-dependent and cannot produce th
 model underneath accumulates a 7-dimension vector. `verify:quiz` asserts the
 result is bit-identical under reordering, so if you change the estimator, keep
 it commutative.
+
+**Section 2 has two halves, and they do different jobs.** The photo taps measure
+*revealed* preference — everybody claims to love spicy food, and the taps find
+out. The six questions in `food-relationship.ts` measure what taps cannot reach:
+how central food is, what archetype someone is, and how much they need a partner
+to share it. Neither replaces the other, and four questions from the original
+draft were dropped precisely because they duplicated something already measured
+better elsewhere.
+
+**`setting` is stated, not probed.** Where someone eats is something people
+report accurately, and three of the six questions speak to it directly. Dropping
+it as a tap target did *not* measurably improve the other axes (spice recovery
+0.729 → 0.727) — the adaptive selector rarely chose it anyway — so the taps
+stayed at eight rounds rather than shrinking to six.
+
+**Food is weighted per pair, not globally.** `WEIGHTS` used to be a fixed
+0.4/0.4/0.2 for everyone, which over-weighted food for someone who told us it is
+not a compatibility test and under-weighted it for someone for whom it is
+everything. It now comes from the **average** of the two people's stated
+importance, clamped so neither half can vanish. Averaging is what preserves
+`score(a,b) === score(b,a)`; taking the stricter of the two would let one
+person's priorities govern someone else's feed. A large gap between the two
+becomes its own why-chip, because averaging alone would hide a real
+incompatibility behind a decent number.
 
 **Cuisine is declared, not inferred.** Eight rounds identify 1-of-9 cuisines only
 ~22% of the time, and spending more rounds on it does not help while costing real

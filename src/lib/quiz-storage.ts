@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Cuisine, DietBand, TasteVector } from './food/types.ts';
 import type { PsychAnswer } from './psych/psych-bank.ts';
+import type { FoodAnswer } from './food/food-relationship.ts';
 
 /**
  * The quiz result, kept on the device.
@@ -17,7 +18,9 @@ import type { PsychAnswer } from './psych/psych-bank.ts';
  * difference between "retake the quiz" and a card rendering NaN.
  */
 const KEY = 'spicesync.quiz';
-const VERSION = 1;
+// v2 adds the Section 2b answers and changes the vector's shape. A v1 result
+// is discarded rather than half-read.
+const VERSION = 2;
 
 export interface StoredQuiz {
   version: number;
@@ -27,6 +30,7 @@ export interface StoredQuiz {
   label: string;
   dishName: string;
   dishEmoji: string;
+  foodAnswers: FoodAnswer[];
   takenAt: string;
 }
 

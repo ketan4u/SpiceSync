@@ -13,6 +13,13 @@
 import { FOOD_CATALOG, getItem, poolFor } from './food-catalog.ts';
 import { DEFAULT_ROUNDS, mulberry32, nextPair, representativeItem } from './pair-generator.ts';
 import { applyChoice, createAccumulator, finalise, foodIdentityLabel, spiceLabel } from './score-taste.ts';
+import {
+  ARCHETYPE_LABELS,
+  FOOD_QUESTIONS,
+  scoreFoodRelationship,
+  type Archetype,
+  type FoodAnswer,
+} from './food-relationship.ts';
 import { CONTINUOUS_AXES, DIET_BAND_ORDER, type ContinuousAxis, type Cuisine, type DietBand, type FoodItem } from './types.ts';
 
 interface Persona {
@@ -241,6 +248,55 @@ console.log('\n5. LABEL DISTRIBUTION (2000 users)');
   check('axes not saturating', worstClamp < 0.05, `worst axis clamped on ${(100 * worstClamp).toFixed(1)}% of users`);
 }
 
+// -------------------------------------------------------- 5b. the badge
+console.log('\n5b. BADGE (Section 2b)');
+{
+  const rng = mulberry32(31337);
+  const counts: Record<string, number> = {};
+  const weights: number[] = [];
+  const N = 2000;
+
+  for (let i = 0; i < N; i++) {
+    const answers: FoodAnswer[] = FOOD_QUESTIONS.map((q) => ({
+      questionId: q.id,
+      optionId: q.options[Math.floor(rng() * q.options.length)].id,
+    }));
+    const r = scoreFoodRelationship(answers);
+    counts[r.archetype ?? 'none'] = (counts[r.archetype ?? 'none'] ?? 0) + 1;
+    weights.push(r.foodWeight);
+  }
+
+  const archetypes = Object.keys(ARCHETYPE_LABELS) as Archetype[];
+  const missing = archetypes.filter((a) => !counts[a]);
+  check('every archetype is reachable', missing.length === 0,
+    missing.length ? `never produced: ${missing.join(', ')}` :
+      archetypes.map((a) => `${ARCHETYPE_LABELS[a]} ${(100 * counts[a] / N).toFixed(0)}%`).join(' · '));
+
+  const largest = Math.max(...archetypes.map((a) => counts[a] ?? 0)) / N;
+  check('no archetype dominates', largest < 0.55, `largest = ${(100 * largest).toFixed(1)}%`);
+
+  // foodWeight is the whole point of question six; a collapsed range would mean
+  // every pair gets the same weighting again, silently.
+  const spread = Math.max(...weights) - Math.min(...weights);
+  check('food weight spans its range', spread > 0.6,
+    `${Math.min(...weights).toFixed(2)} to ${Math.max(...weights).toFixed(2)}`);
+
+  // The badge needs both halves. No answers means no archetype, and the label
+  // must fall back rather than inventing a personality.
+  const acc = createAccumulator('eats_anything', ['south_indian']);
+  const r2 = mulberry32(5);
+  for (let round = 1; round <= DEFAULT_ROUNDS; round++) {
+    const pair = nextPair(acc, round, r2);
+    if (!pair) break;
+    applyChoice(acc, { round, winnerId: pair.left.id, loserId: pair.right.id, probing: pair.probing }, pair.left, pair.right);
+  }
+  const withoutAnswers = foodIdentityLabel(finalise(acc));
+  const withAnswers = foodIdentityLabel(finalise(acc, FOOD_QUESTIONS.map((q) => ({ questionId: q.id, optionId: q.options[0].id }))));
+  check('no Section 2b answers means no invented archetype', !withoutAnswers.startsWith('The '),
+    `falls back to "${withoutAnswers}"`);
+  check('answers produce a badge', withAnswers.startsWith('The '), `"${withAnswers}"`);
+}
+
 // ------------------------------------------------------------------- 6. sample
 console.log('\n6. SAMPLE OUTPUTS');
 {
@@ -250,9 +306,13 @@ console.log('\n6. SAMPLE OUTPUTS');
     ['Eats anything, rich food', { dietBand: 'eats_anything', ideal: { spice: 0.6, richness: 0.9, novelty: 0.8, sweetness: 0.2 }, favouriteCuisine: 'mughlai', declaredCuisines: ['mughlai', 'street', 'continental'] }],
     ['Generally non-veg, comfort', { dietBand: 'generally_non_veg', ideal: { spice: 0.35, richness: 0.7, novelty: 0.1, sweetness: 0.3 }, favouriteCuisine: 'north_indian', declaredCuisines: ['north_indian', 'street', 'continental'] }],
   ];
+  const sampleAnswers = FOOD_QUESTIONS.map((q, i) => ({
+    questionId: q.id,
+    optionId: q.options[i % q.options.length].id,
+  }));
   for (const [name, p] of samples) {
     const acc = runQuiz(p, 2024);
-    const v = finalise(acc);
+    const v = finalise(acc, sampleAnswers);
     const rep = representativeItem(acc, getItem);
     console.log(`  ${name}`);
     console.log(`    -> "${foodIdentityLabel(v)}"  ${rep ? `${rep.emoji} ${rep.name}` : ''}`);

@@ -70,6 +70,13 @@ export const CUISINE_LABELS: Record<Cuisine, string> = {
 /** Where the dish lives. Correlates with spending and date-planning style. */
 export type Setting = 'street' | 'home' | 'cafe' | 'restaurant';
 
+/**
+ * `setting` is no longer probed by the taps — it is stated in Section 2b, where
+ * people report it accurately and three questions speak to it directly. The
+ * field stays on the vector so everything downstream is unchanged; only its
+ * source moved.
+ */
+
 /** Continuous axes, all normalised 0..1. */
 export type ContinuousAxis = 'spice' | 'richness' | 'novelty' | 'sweetness';
 
@@ -114,6 +121,18 @@ export interface TasteVector {
   setting: Record<Setting, number>;
   /** Accumulated evidence per axis. Low confidence => don't show it on the card. */
   confidence: Record<ContinuousAxis | 'cuisine' | 'setting', number>;
+
+  // ---- from Section 2b, the food-relationship questions ----
+
+  /** The noun on the badge. Null until those questions are answered. */
+  archetype?: string | null;
+  /** How much food matters to this person's identity, 0..1. */
+  centrality?: number;
+  /**
+   * How heavily food should count in THIS person's matching. Averaged with the
+   * other party's when a pair is scored — see score.ts.
+   */
+  foodWeight?: number;
 }
 
 export interface QuizChoice {

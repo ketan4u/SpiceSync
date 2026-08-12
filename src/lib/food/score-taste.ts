@@ -1,5 +1,12 @@
 import { POOL_CALIBRATION } from './pool-calibration.ts';
 import {
+  ARCHETYPE_LABELS,
+  DEFAULT_FOOD_WEIGHT,
+  scoreFoodRelationship,
+  type Archetype,
+  type FoodAnswer,
+} from './food-relationship.ts';
+import {
   CONTINUOUS_AXES,
   CUISINE_LABELS,
   type ContinuousAxis,
@@ -266,7 +273,16 @@ export function rawAxisEstimates(acc: TasteAccumulator): Record<ContinuousAxis, 
   ) as Record<ContinuousAxis, number>;
 }
 
-export function finalise(acc: TasteAccumulator): TasteVector {
+/**
+ * Turns the accumulated taps — and, when they exist, the Section 2b answers —
+ * into one vector.
+ *
+ * The relationship answers are optional so that a half-finished quiz still
+ * produces something renderable. Without them there is no archetype and no
+ * badge, only the measured axes.
+ */
+export function finalise(acc: TasteAccumulator, foodAnswers: FoodAnswer[] = []): TasteVector {
+  const relationship = scoreFoodRelationship(foodAnswers);
   const raw = rawAxisEstimates(acc);
   const axes = Object.fromEntries(
     CONTINUOUS_AXES.map((a) => [a, calibrateToPool(acc.dietBand, a, raw[a])]),
@@ -287,7 +303,13 @@ export function finalise(acc: TasteAccumulator): TasteVector {
     dietBand: acc.dietBand,
     ...axes,
     cuisine: normalise<Cuisine>(blended),
-    setting: normalise<Setting>(acc.setting),
+    // Setting is stated in Section 2b rather than probed by the taps.
+    setting: (relationship.answered > 0
+      ? relationship.setting
+      : normalise<Setting>(acc.setting)) as Record<Setting, number>,
+    archetype: relationship.archetype,
+    centrality: relationship.centrality,
+    foodWeight: relationship.answered > 0 ? relationship.foodWeight : DEFAULT_FOOD_WEIGHT,
     confidence: {
       ...axisConfidence,
       // Cuisine is now partly inferred from the axes, so it inherits their
@@ -296,7 +318,9 @@ export function finalise(acc: TasteAccumulator): TasteVector {
       // falls back to quiz evidence alone, which the card treats as low-trust.
       cuisine:
         acc.declaredCuisines.length > 0 ? 1 : confidenceFrom(acc.cuisineEvidence * 0.5),
-      setting: confidenceFrom(acc.settingEvidence * 0.5),
+      setting: relationship.answered > 0
+        ? Math.min(1, relationship.answered / 4)
+        : confidenceFrom(acc.settingEvidence * 0.5),
     },
   };
 }
@@ -322,10 +346,31 @@ export function topCuisine(v: TasteVector): Cuisine | null {
 }
 
 /**
- * The Explore card label, e.g. "North Indian, Extra Spicy".
- * Falls back gracefully when the quiz was abandoned early.
+ * The badge, e.g. "The Spicy Explorer".
+ *
+ * One half measured, one half stated. The old label was cuisine plus spice, and
+ * cuisine is something the user typed in on a tile grid — so half the badge told
+ * them nothing they did not already know about themselves. Now the intensity
+ * comes from what they tapped and the noun from what food means to them.
+ *
+ * Without Section 2b answers there is no archetype, so it falls back to the
+ * older shape rather than inventing a personality.
  */
+const INTENSITY_BANDS: Array<[number, string]> = [
+  [0.28, 'Mild'],
+  [0.52, 'Warm'],
+  [0.76, 'Spicy'],
+  [1.01, 'Fiery'],
+];
+
+export function intensityWord(spice: number): string {
+  return INTENSITY_BANDS.find(([ceiling]) => spice < ceiling)![1];
+}
+
 export function foodIdentityLabel(v: TasteVector): string {
+  if (v.archetype) {
+    return `The ${intensityWord(v.spice)} ${ARCHETYPE_LABELS[v.archetype as Archetype]}`;
+  }
   const cuisine = topCuisine(v);
   const spice = spiceLabel(v.spice);
   if (!cuisine || v.confidence.cuisine < 0.4) return spice;

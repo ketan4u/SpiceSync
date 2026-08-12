@@ -211,6 +211,7 @@ function SyncSection({ profile }: { profile: EditableProfile }) {
               taste: quiz?.vector,
               foodLabel: quiz?.label,
               representativeDish: quiz?.dishName,
+              foodAnswers: quiz?.foodAnswers,
               psychAnswers: psych,
             });
             if (!result.ok) setError(result.error ?? 'Could not sync.');

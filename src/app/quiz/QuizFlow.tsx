@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState, useTransition } from 'react';
 import { joinWaitlist } from './actions.ts';
 import { saveQuiz } from '@/lib/quiz-storage.ts';
+import { FOOD_QUESTIONS, type FoodAnswer } from '@/lib/food/food-relationship.ts';
 import { CITIES, joinedMessage } from '@/lib/cities.ts';
 import { getItem, poolFor } from '@/lib/food/food-catalog.ts';
 import {
@@ -60,7 +61,7 @@ const CUISINE_ORDER: Cuisine[] = [
   'pan_asian',
 ];
 
-type Step = 'diet' | 'cuisine' | 'rounds' | 'result';
+type Step = 'diet' | 'cuisine' | 'rounds' | 'relationship' | 'result';
 
 interface Outcome {
   vector: TasteVector;
@@ -69,6 +70,7 @@ interface Outcome {
   dishName: string;
   dishEmoji: string;
   /** Carried so the waitlist row arrives already scored. */
+  foodAnswers: FoodAnswer[];
   dietBand: DietBand;
   declaredCuisines: Cuisine[];
   choices: QuizChoice[];
@@ -82,6 +84,8 @@ export default function QuizFlow() {
   const [round, setRound] = useState(1);
   const [skipsLeft, setSkipsLeft] = useState(1);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [foodAnswers, setFoodAnswers] = useState<FoodAnswer[]>([]);
+  const [questionIndex, setQuestionIndex] = useState(0);
 
   // The accumulator is mutable and holds a Set, so it lives in a ref rather
   // than in state. The RNG is seeded on first interaction, not at module load,
@@ -94,7 +98,20 @@ export default function QuizFlow() {
     // dry early for a narrow diet band — both end the quiz.
     const next = nextRound <= DEFAULT_ROUNDS ? nextPair(current, nextRound, rng.current!) : null;
     if (!next) {
-      const vector = finalise(current);
+      // The taps are only half of Section 2 now. What food *means* to someone is
+      // asked next, and the badge needs both halves.
+      setStep('relationship');
+      return;
+    }
+    setPair(next);
+    setRound(nextRound);
+  }, []);
+
+  const finishQuiz = useCallback(
+    (answers: FoodAnswer[]) => {
+      const current = acc.current;
+      if (!current) return;
+      const vector = finalise(current, answers);
       const rep = representativeItem(current, getItem);
       const result = {
         vector,
@@ -105,6 +122,7 @@ export default function QuizFlow() {
         dietBand: current.dietBand,
         declaredCuisines: current.declaredCuisines,
         choices: [...current.choices],
+        foodAnswers: answers,
       };
       setOutcome(result);
       // Carries this person into Explore, and later into their account.
@@ -115,13 +133,12 @@ export default function QuizFlow() {
         label: result.label,
         dishName: result.dishName,
         dishEmoji: result.dishEmoji,
+        foodAnswers: answers,
       });
       setStep('result');
-      return;
-    }
-    setPair(next);
-    setRound(nextRound);
-  }, []);
+    },
+    [],
+  );
 
   const startRounds = useCallback(() => {
     if (!dietBand) return;
@@ -158,6 +175,8 @@ export default function QuizFlow() {
     rng.current = null;
     setDietBand(null);
     setCuisines([]);
+    setFoodAnswers([]);
+    setQuestionIndex(0);
     setPair(null);
     setRound(1);
     setSkipsLeft(1);
@@ -287,6 +306,60 @@ export default function QuizFlow() {
               Neither, honestly
             </button>
           </p>
+        )}
+      </>
+    );
+  }
+
+  // -------------------------------------------------- relationship questions
+  if (step === 'relationship') {
+    const question = FOOD_QUESTIONS[questionIndex];
+
+    // Unreachable in practice: answering the last question calls finishQuiz from
+    // the click handler and moves to the result. Scoring here instead would be a
+    // side effect during render, which reads a ref and is exactly what
+    // react-hooks/refs forbids.
+    if (!question) return <p className="foot">Loading…</p>;
+
+    const answer = (optionId: string) => {
+      const next = [
+        ...foodAnswers.filter((a) => a.questionId !== question.id),
+        { questionId: question.id, optionId },
+      ];
+      setFoodAnswers(next);
+      if (questionIndex + 1 >= FOOD_QUESTIONS.length) finishQuiz(next);
+      else setQuestionIndex(questionIndex + 1);
+    };
+
+    return (
+      <>
+        <div className="progress" aria-label={`Question ${questionIndex + 1} of ${FOOD_QUESTIONS.length}`}>
+          {FOOD_QUESTIONS.map((q, i) => (
+            <span key={q.id} className="pip" data-state={i < questionIndex ? 'done' : i === questionIndex ? 'current' : 'todo'} />
+          ))}
+        </div>
+
+        <p className="step-label">
+          Step 3 of 3 · {questionIndex + 1} of {FOOD_QUESTIONS.length}
+        </p>
+        <h1 className="q-prompt">{question.prompt}</h1>
+
+        <div style={{ marginTop: 20 }}>
+          {question.options.map((o) => (
+            <button key={o.id} className="option" onClick={() => answer(o.id)}>
+              <span className="option-title" style={{ fontWeight: 500 }}>{o.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {questionIndex > 0 && (
+          <button
+            className="btn-text"
+            style={{ margin: '10px auto 0', display: 'block' }}
+            onClick={() => setQuestionIndex(questionIndex - 1)}
+          >
+            Back
+          </button>
         )}
       </>
     );
