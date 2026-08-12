@@ -525,7 +525,7 @@ function Result({
           {savedToProfile === true &&
             'Saved to your profile. Matching now uses this, not your old answers.'}
           {savedToProfile === false &&
-            'We could not save this to your profile. Your result is on this device — open settings and apply it from there.'}
+            'We could not save this to your profile — the server said why in the logs. Your result is safe on this device; open settings to apply it once that is fixed.'}
         </p>
       ) : (
         <p className="note">

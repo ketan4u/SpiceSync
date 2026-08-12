@@ -112,7 +112,15 @@ export async function syncFromDevice(payload: {
   if (Object.keys(update).length === 0) return { ok: false, error: 'Nothing to sync.' };
 
   const { error } = await supabase.from('profiles').update(update).eq('id', auth.user.id);
-  if (error) return { ok: false, error: 'Could not sync.' };
+  if (error) {
+    console.error('[settings] sync failed', error.message);
+    // A missing column means an unapplied migration, not something the user did
+    // wrong. Saying "could not sync" sends them looking at their answers.
+    if (/column .* does not exist|schema cache/i.test(error.message)) {
+      return { ok: false, error: 'The database is missing a migration. Apply supabase/migrations and try again.' };
+    }
+    return { ok: false, error: 'Could not sync. Try again.' };
+  }
   revalidatePath('/settings');
   revalidatePath('/explore');
   return { ok: true };
@@ -127,7 +135,10 @@ export async function unblock(blockedId: string): Promise<Result> {
     .delete()
     .eq('blocker_id', auth.user.id)
     .eq('blocked_id', blockedId);
-  if (error) return { ok: false, error: 'Could not unblock.' };
+  if (error) {
+    console.error('[settings] unblock failed', error.message);
+    return { ok: false, error: 'Could not unblock.' };
+  }
   revalidatePath('/settings');
   return { ok: true };
 }
