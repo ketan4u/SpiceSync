@@ -2,7 +2,7 @@ import Link from 'next/link';
 import AppHeader from '../AppHeader.tsx';
 import ExploreFeed from './ExploreFeed.tsx';
 import RealFeed from './RealFeed.tsx';
-import { getFeed } from '@/lib/match/pool.ts';
+import { getFeed, getUndoState } from '@/lib/match/pool.ts';
 import { createClient } from '@/lib/supabase/server.ts';
 
 export const metadata = {
@@ -18,6 +18,7 @@ export const metadata = {
 export default async function ExplorePage() {
   let signedIn = false;
   let feed = null;
+  let undo = { hasPass: false, available: false };
 
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     const supabase = await createClient();
@@ -25,6 +26,7 @@ export default async function ExplorePage() {
     if (auth.user) {
       signedIn = true;
       feed = await getFeed(auth.user.id);
+      undo = await getUndoState(auth.user.id);
     }
   }
 
@@ -35,7 +37,7 @@ export default async function ExplorePage() {
       {!signedIn || !feed ? (
         <ExploreFeed />
       ) : !feed.reason ? (
-        <RealFeed initial={feed.cards} />
+        <RealFeed initial={feed.cards} undo={undo} />
       ) : feed.reason === 'no-profile' ? (
         <>
           <h1>Finish your profile</h1>

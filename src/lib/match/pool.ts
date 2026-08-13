@@ -197,6 +197,36 @@ async function signedUrls(paths: string[]): Promise<[string | null, string | nul
   return [signed[0], signed[1]];
 }
 
+export interface UndoState {
+  /** A pass exists that could be undone. */
+  hasPass: boolean;
+  /** The daily allowance has not been spent. */
+  available: boolean;
+}
+
+/**
+ * Whether the undo button should be offered.
+ *
+ * The database enforces the limit regardless; this only decides what the
+ * button says, so that pressing it is not the way someone finds out they
+ * already used it today.
+ */
+export async function getUndoState(userId: string): Promise<UndoState> {
+  const admin = createAdminClient();
+  if (!admin) return { hasPass: false, available: false };
+
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const [passes, used] = await Promise.all([
+    admin.from('likes').select('liked_id').eq('liker_id', userId).eq('verdict', 'pass').limit(1),
+    admin.from('pass_undos').select('used_on').eq('user_id', userId).eq('used_on', today).limit(1),
+  ]);
+
+  return {
+    hasPass: (passes.data ?? []).length > 0,
+    available: (used.data ?? []).length === 0,
+  };
+}
+
 /** Someone you liked who had already liked you. */
 export interface MatchSummary {
   id: string;

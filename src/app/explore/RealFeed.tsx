@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import type { FeedCard } from '@/lib/match/pool.ts';
 import SafetyMenu from '../SafetyMenu.tsx';
-import { recordVerdict } from './actions.ts';
+import { loadMore, recordVerdict, undoLastPass } from './actions.ts';
 
 /**
  * Explore, over real accounts.
@@ -13,8 +13,16 @@ import { recordVerdict } from './actions.ts';
  * scoring, and nothing in this component has access to anyone's psych answers
  * or date of birth. It renders what it is given and reports verdicts back.
  */
-export default function RealFeed({ initial }: { initial: FeedCard[] }) {
-  const [cards] = useState(initial);
+export default function RealFeed({
+  initial,
+  undo,
+}: {
+  initial: FeedCard[];
+  undo: { hasPass: boolean; available: boolean };
+}) {
+  const [cards, setCards] = useState(initial);
+  const [undoState, setUndoState] = useState(undo);
+  const [undoError, setUndoError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [matched, setMatched] = useState<FeedCard | null>(null);
   const [pending, setPending] = useState(false);
@@ -30,7 +38,34 @@ export default function RealFeed({ initial }: { initial: FeedCard[] }) {
       setMatched(current);
       return;
     }
+    if (verdict === 'pass') setUndoState((u) => ({ ...u, hasPass: true }));
     setIndex((i) => i + 1);
+  };
+
+  /**
+   * Brings back the last person passed, and shows them next.
+   *
+   * The feed is reloaded rather than refreshed, and the restored person is put
+   * at the front by hand. Left to the ranking they could reappear anywhere in
+   * the list, which is not what someone means when they undo a mis-tap.
+   */
+  const runUndo = async () => {
+    if (pending) return;
+    setPending(true);
+    setUndoError(null);
+    const result = await undoLastPass();
+    if (!result.ok) {
+      setUndoError(result.error);
+      setUndoState((u) => ({ ...u, available: false }));
+      setPending(false);
+      return;
+    }
+    const fresh = await loadMore();
+    const restored = fresh.find((c) => c.id === result.restoredId);
+    setCards(restored ? [restored, ...fresh.filter((c) => c.id !== restored.id)] : fresh);
+    setIndex(0);
+    setUndoState({ hasPass: false, available: false });
+    setPending(false);
   };
 
   if (matched) {
@@ -135,6 +170,13 @@ export default function RealFeed({ initial }: { initial: FeedCard[] }) {
           Like
         </button>
       </div>
+
+      {undoState.hasPass && undoState.available && (
+        <button className="safety-trigger" onClick={runUndo} disabled={pending}>
+          Bring back the last person I passed
+        </button>
+      )}
+      {undoError && <p className="foot">{undoError}</p>}
 
       <SafetyMenu
         key={current.id}

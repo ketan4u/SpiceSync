@@ -221,6 +221,16 @@ Explore reads real accounts when you are signed in and onboarded, and falls back
 to the seeded demo otherwise, so the public quiz still leads somewhere. Likes
 persist, and a mutual like is a match.
 
+A pass can be undone **once per calendar day**, restoring the most recently
+passed profile and showing them next. The allowance lives in the primary key of
+`pass_undos`, and the undo itself is one Postgres function, so two taps in
+flight cannot both succeed and nobody can spend an undo on a pass that turns out
+not to exist. "Today" is IST — the app is India-first, and a UTC day would reset
+at 05:30 where the users are.
+
+That function is the single sanctioned exception to the rule that likes cannot
+be deleted. It only ever removes the caller's own most recent pass.
+
 Blocking, reporting and unmatching work. A block writes only to `blocks` — an
 earlier version also stored a `pass`, which overwrote the blocker's existing
 verdict and so destroyed a like permanently, making a reversible-sounding action
