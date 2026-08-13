@@ -102,6 +102,14 @@ export default function SettingsForm({
         {CITIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
       </select>
 
+      <button className="option" data-selected={openToDistance}
+        onClick={() => setOpenToDistance(!openToDistance)} aria-pressed={openToDistance}>
+        <span>
+          <span className="option-title">Show me great matches further away</span>
+          <span className="option-sub">Only when the match is strong, and only if they agreed too</span>
+        </span>
+      </button>
+
       <p className="ask">Ages you want to see</p>
       <div className="age-range">
         <input className="text-input" type="number" min={18} max={99} value={ageMin}
@@ -110,14 +118,6 @@ export default function SettingsForm({
         <input className="text-input" type="number" min={18} max={99} value={ageMax}
           onChange={(e) => setAgeMax(Number(e.target.value))} aria-label="Maximum age" />
       </div>
-
-      <button className="option" data-selected={openToDistance}
-        onClick={() => setOpenToDistance(!openToDistance)} aria-pressed={openToDistance}>
-        <span>
-          <span className="option-title">Show me great matches further away</span>
-          <span className="option-sub">Only when the match is strong, and only if they agreed too</span>
-        </span>
-      </button>
 
       <h2 className="settings-h">Non-negotiables</h2>
       <p className="settings-note">
