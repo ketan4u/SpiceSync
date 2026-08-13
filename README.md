@@ -221,7 +221,12 @@ Explore reads real accounts when you are signed in and onboarded, and falls back
 to the seeded demo otherwise, so the public quiz still leads somewhere. Likes
 persist, and a mutual like is a match.
 
-Blocking, reporting and unmatching work. A block hides both people from each
+Blocking, reporting and unmatching work. A block writes only to `blocks` — an
+earlier version also stored a `pass`, which overwrote the blocker's existing
+verdict and so destroyed a like permanently, making a reversible-sounding action
+irreversible. The block table alone hides both people in both directions.
+
+ A block hides both people from each
 other — one-directional blocking is detectable by whoever is still being shown,
 which is worse than none. Reporting blocks as a side effect and says so before
 the tap. The blocked party cannot read the block: their RLS policy only matches
