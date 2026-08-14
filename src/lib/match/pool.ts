@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createAdminClient } from '../supabase/admin.ts';
 import { sanitiseTags } from '../dealbreakers.ts';
-import { scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
+import { sanitisePsychAnswers, scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
 import type { TasteVector } from '../food/types.ts';
 import { rankFor } from './score.ts';
 import type { Intent, MatchProfile } from './types.ts';
@@ -225,6 +225,25 @@ export async function getUndoState(userId: string): Promise<UndoState> {
     hasPass: (passes.data ?? []).length > 0,
     available: (used.data ?? []).length === 0,
   };
+}
+
+/**
+ * Which Section 3 questions this person has already answered.
+ *
+ * Only the ids leave — the feed needs to know what to ask next, not what anyone
+ * replied. For a signed-in user the profile row is the source of truth for this,
+ * not the copy on the device: the drip questions are answered in the feed and
+ * write straight here.
+ */
+export async function getAnsweredPsychIds(userId: string): Promise<string[]> {
+  const admin = createAdminClient();
+  if (!admin) return [];
+  const { data } = await admin
+    .from('profiles')
+    .select('psych_answers')
+    .eq('id', userId)
+    .maybeSingle();
+  return sanitisePsychAnswers(data?.psych_answers).map((a) => a.questionId);
 }
 
 /** Someone you liked who had already liked you. */

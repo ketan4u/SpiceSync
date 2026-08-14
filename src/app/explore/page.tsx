@@ -2,7 +2,7 @@ import Link from 'next/link';
 import AppHeader from '../AppHeader.tsx';
 import ExploreFeed from './ExploreFeed.tsx';
 import RealFeed from './RealFeed.tsx';
-import { getFeed, getUndoState } from '@/lib/match/pool.ts';
+import { getAnsweredPsychIds, getFeed, getUndoState } from '@/lib/match/pool.ts';
 import { createClient } from '@/lib/supabase/server.ts';
 
 export const metadata = {
@@ -19,14 +19,18 @@ export default async function ExplorePage() {
   let signedIn = false;
   let feed = null;
   let undo = { hasPass: false, available: false };
+  let answeredIds: string[] = [];
 
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     const supabase = await createClient();
     const { data: auth } = await supabase.auth.getUser();
     if (auth.user) {
       signedIn = true;
-      feed = await getFeed(auth.user.id);
-      undo = await getUndoState(auth.user.id);
+      [feed, undo, answeredIds] = await Promise.all([
+        getFeed(auth.user.id),
+        getUndoState(auth.user.id),
+        getAnsweredPsychIds(auth.user.id),
+      ]);
     }
   }
 
@@ -37,7 +41,7 @@ export default async function ExplorePage() {
       {!signedIn || !feed ? (
         <ExploreFeed />
       ) : !feed.reason ? (
-        <RealFeed initial={feed.cards} undo={undo} />
+        <RealFeed initial={feed.cards} undo={undo} answeredIds={answeredIds} />
       ) : feed.reason === 'no-profile' ? (
         <>
           <h1>Finish your profile</h1>

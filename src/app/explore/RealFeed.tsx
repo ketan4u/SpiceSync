@@ -3,8 +3,13 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import type { FeedCard } from '@/lib/match/pool.ts';
+import {
+  coreProgress,
+  nextQuestion,
+  type PsychQuestion,
+} from '@/lib/psych/psych-bank.ts';
 import SafetyMenu from '../SafetyMenu.tsx';
-import { loadMore, recordVerdict, undoLastPass } from './actions.ts';
+import { loadMore, recordPsychAnswer, recordVerdict, undoLastPass } from './actions.ts';
 
 /**
  * Explore, over real accounts.
@@ -16,9 +21,12 @@ import { loadMore, recordVerdict, undoLastPass } from './actions.ts';
 export default function RealFeed({
   initial,
   undo,
+  answeredIds,
 }: {
   initial: FeedCard[];
   undo: { hasPass: boolean; available: boolean };
+  /** Section 3 questions already on this person's profile. */
+  answeredIds: string[];
 }) {
   const [cards, setCards] = useState(initial);
   const [undoState, setUndoState] = useState(undo);
@@ -26,8 +34,12 @@ export default function RealFeed({
   const [index, setIndex] = useState(0);
   const [matched, setMatched] = useState<FeedCard | null>(null);
   const [pending, setPending] = useState(false);
+  const [answered, setAnswered] = useState(answeredIds);
+  const [drip, setDrip] = useState<PsychQuestion | null>(null);
+  const [decided, setDecided] = useState(0);
 
   const current = cards[index];
+  const progress = coreProgress(answered);
 
   const decide = async (verdict: 'like' | 'pass') => {
     if (!current || pending) return;
@@ -40,6 +52,36 @@ export default function RealFeed({
     }
     if (verdict === 'pass') setUndoState((u) => ({ ...u, hasPass: true }));
     setIndex((i) => i + 1);
+
+    // Every fourth card, ask one question — the brief's "prompts shown while
+    // swiping". Frequent enough to build a profile, rare enough not to feel like
+    // a form. Half of every score is psychological, so someone who skipped
+    // Section 3 at signup is being ranked on a neutral 0.5 until these land.
+    const count = decided + 1;
+    setDecided(count);
+    if (count % 4 === 0) setDrip(nextQuestion(answered));
+  };
+
+  /**
+   * Answers the question on screen, then rebuilds the deck.
+   *
+   * The answer changes the psychological half of every score, so the cards below
+   * were ranked without it. Reloading is what makes answering worth doing —
+   * otherwise the feed keeps showing an order the app no longer believes in.
+   * Restarting at index 0 is correct because everyone already judged is excluded
+   * server-side, so a fresh deck resumes exactly where this one stopped.
+   */
+  const answerDrip = async (optionId: string) => {
+    if (!drip || pending) return;
+    setPending(true);
+    const result = await recordPsychAnswer(drip.id, optionId);
+    if (result.ok) {
+      setAnswered(result.answeredIds);
+      setCards(await loadMore());
+      setIndex(0);
+    }
+    setDrip(null);
+    setPending(false);
   };
 
   /**
@@ -82,6 +124,35 @@ export default function RealFeed({
             Keep looking
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // Ahead of the empty state on purpose: when the fourth verdict was also the
+  // last card, the question is still worth asking rather than dropped.
+  if (drip) {
+    return (
+      <div className="drip">
+        <p className="drip-label">One quick question</p>
+        <h2>{drip.prompt}</h2>
+        {drip.options.map((o) => (
+          <button
+            key={o.id}
+            className="option"
+            disabled={pending}
+            onClick={() => answerDrip(o.id)}
+          >
+            <span className="option-title" style={{ fontWeight: 500 }}>{o.label}</span>
+          </button>
+        ))}
+        <button
+          className="btn-text"
+          style={{ margin: '2px auto 0', display: 'block' }}
+          disabled={pending}
+          onClick={() => setDrip(null)}
+        >
+          Skip
+        </button>
       </div>
     );
   }
@@ -177,6 +248,21 @@ export default function RealFeed({
         </button>
       )}
       {undoError && <p className="foot">{undoError}</p>}
+
+      {progress.done === 0 ? (
+        <p className="foot">
+          Half of every score is psychological compatibility, and you have not answered those
+          questions yet — so these are food and intent only. One question appears every few
+          cards.
+        </p>
+      ) : progress.done < progress.total ? (
+        <p className="foot">
+          {progress.done} of {progress.total} personality questions answered. The rest arrive as
+          you swipe, and each one sharpens these scores.
+        </p>
+      ) : (
+        <p className="foot">All twelve answered — these scores use everything we have.</p>
+      )}
 
       <SafetyMenu
         key={current.id}

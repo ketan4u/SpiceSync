@@ -26,7 +26,8 @@ entire security boundary rather than a second line of defence. The app runs
 without any of it — sign-in reports that it is not connected rather than failing
 oddly.
 
-Apply both migrations in the Supabase SQL Editor, in order.
+Apply every file in `supabase/migrations/` in the Supabase SQL Editor, in
+filename order. Each one assumes the ones before it have run.
 
 **One Supabase setting is required for sign-in.** The default email template
 sends a magic link; this app uses a six-digit code, because on a phone a link
@@ -213,6 +214,13 @@ Both halves of the score are now live. With no Section 3 answers the
 psychological component sits at a neutral 0.500 and only 11 of 16 cards can be
 explained; after the core twelve it reaches ~0.72 and every card carries chips.
 
+Section 3 fills in as you swipe, in the real feed as well as the demo — one
+question every fourth card, written straight to the profile. Answering rebuilds
+the deck, because the answer changes the psychological half of every score below
+and a feed that kept its old order would be showing a ranking the app no longer
+believes. Answers merge from both directions: the twelve taken on the device and
+the drip questions taken in the feed, so neither path deletes the other's work.
+
 Accounts exist: email OTP sign-in, an 18+ gate enforced in the database as well
 as the UI, and onboarding that carries the quiz result and personality answers
 from the device into the profile.
@@ -299,9 +307,11 @@ reason to leave them out. A structured filter is not a neutral container — it 
 what makes sorting people by those categories fast, repeatable and normal. It is
 a product decision, not a technical limit. Overrule it knowingly.
 
-Not built: selfie *verification* — photos upload but nothing checks them. The dealbreaker gate has
-nothing to act on because Section 1's non-negotiables are not collected yet.
-Dish art is emoji placeholder.
+Not built: selfie *verification* — photos upload but nothing checks them. Dish
+art is emoji placeholder. Most of the brief's Section 1 — education, job,
+height, prompts, red flags, political views, past-relationship learnings — is
+still deferred, as is kundli matching and the settle-city question that goes
+with a marriage intention.
 
 **How the feed reads other people.** There is deliberately no cross-user read
 policy — through the ordinary client you can reach your own row and nothing

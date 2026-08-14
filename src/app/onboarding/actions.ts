@@ -4,7 +4,7 @@ import { isKnownCity } from '../../lib/cities.ts';
 import { sanitiseTags } from '../../lib/dealbreakers.ts';
 import { INTENTS, type Intent } from '../../lib/match/types.ts';
 import { createClient } from '../../lib/supabase/server.ts';
-import type { PsychAnswer } from '../../lib/psych/psych-bank.ts';
+import { sanitisePsychAnswers, type PsychAnswer } from '../../lib/psych/psych-bank.ts';
 import type { TasteVector } from '../../lib/food/types.ts';
 import { sanitiseFoodAnswers, type FoodAnswer } from '../../lib/food/food-relationship.ts';
 
@@ -114,7 +114,7 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<On
       taste: payload.taste ?? null,
       food_label: payload.foodLabel ?? null,
       representative_dish: payload.representativeDish ?? null,
-      psych_answers: payload.psychAnswers ?? [],
+      psych_answers: sanitisePsychAnswers(payload.psychAnswers),
       food_answers: sanitiseFoodAnswers(payload.foodAnswers),
       food_archetype: payload.taste?.archetype ?? null,
       food_weight: payload.taste?.foodWeight ?? null,

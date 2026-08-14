@@ -7,7 +7,11 @@ import { sanitiseTags } from '../../lib/dealbreakers.ts';
 import { INTENTS, type Intent } from '../../lib/match/types.ts';
 import { createClient } from '../../lib/supabase/server.ts';
 import { createAdminClient } from '../../lib/supabase/admin.ts';
-import type { PsychAnswer } from '../../lib/psych/psych-bank.ts';
+import {
+  mergePsychAnswers,
+  sanitisePsychAnswers,
+  type PsychAnswer,
+} from '../../lib/psych/psych-bank.ts';
 import type { TasteVector } from '../../lib/food/types.ts';
 import { sanitiseFoodAnswers, type FoodAnswer } from '../../lib/food/food-relationship.ts';
 
@@ -106,8 +110,19 @@ export async function syncFromDevice(payload: {
     update.food_archetype = payload.taste.archetype ?? null;
     update.food_weight = payload.taste.foodWeight ?? null;
   }
-  if (payload.psychAnswers && payload.psychAnswers.length > 0) {
-    update.psych_answers = payload.psychAnswers;
+  // Merged, not overwritten. The device holds whatever was answered at
+  // /questions; the profile also holds the drip questions answered in the feed,
+  // which never touch the device. Writing either one over the other silently
+  // deletes real answers — and the ones lost would be the hardest to re-earn,
+  // because a drip question only comes back around every fourth card.
+  const incoming = sanitisePsychAnswers(payload.psychAnswers);
+  if (incoming.length > 0) {
+    const { data: row } = await supabase
+      .from('profiles')
+      .select('psych_answers')
+      .eq('id', auth.user.id)
+      .maybeSingle();
+    update.psych_answers = mergePsychAnswers(sanitisePsychAnswers(row?.psych_answers), incoming);
   }
   if (Object.keys(update).length === 0) return { ok: false, error: 'Nothing to sync.' };
 
