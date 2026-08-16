@@ -91,7 +91,7 @@ constants are now stale:
 
 ```bash
 npm run calibrate    # ~1 min; rewrites src/lib/food/pool-calibration.ts
-npm run verify       # all 88 checks must stay green
+npm run verify       # all 90 checks must stay green
 ```
 
 Commit the regenerated `pool-calibration.ts` alongside the catalog change. It is

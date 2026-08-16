@@ -69,7 +69,7 @@ this product can ship), and any change to how axis estimates are transformed
 ## Verifying
 
 ```bash
-npm run verify        # 88 checks across four suites
+npm run verify        # 90 checks across four suites
 npm run lint          # ESLint — must be clean
 ```
 
@@ -214,12 +214,21 @@ Both halves of the score are now live. With no Section 3 answers the
 psychological component sits at a neutral 0.500 and only 11 of 16 cards can be
 explained; after the core twelve it reaches ~0.72 and every card carries chips.
 
-Section 3 fills in as you swipe, in the real feed as well as the demo — one
-question every fourth card, written straight to the profile. Answering rebuilds
-the deck, because the answer changes the psychological half of every score below
-and a feed that kept its old order would be showing a ranking the app no longer
-believes. Answers merge from both directions: the twelve taken on the device and
-the drip questions taken in the feed, so neither path deletes the other's work.
+**Section 3 is optional, and optional means it costs you nothing but sharpness.**
+Skipping it does not remove anyone from your feed: the gates are gender, age,
+intent and dealbreakers, and an unanswered trait is treated as unknown rather
+than as a filter. `verify:match` asserts that a profile with zero answers sees
+the same people, in the same order, still carrying chips from food and intent —
+so the feed can never quietly become a reward for finishing a personality test.
+What you lose is the number, since a thin psychological read leaves less to
+explain a score with, and a score with nothing behind it is not shown.
+
+It fills in three ways, all of which now reach the profile: the twelve at
+`/questions`, one question every fourth card in the feed, and the copy carried
+from the device at signup. Answering in the feed rebuilds the deck, because the
+answer changes the psychological half of every score below it and a feed that
+kept its old order would be showing a ranking the app no longer believes.
+Answers merge rather than overwrite, so no path deletes another's work.
 
 Accounts exist: email OTP sign-in, an 18+ gate enforced in the database as well
 as the UI, and onboarding that carries the quiz result and personality answers

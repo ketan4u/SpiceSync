@@ -141,6 +141,56 @@ export async function syncFromDevice(payload: {
   return { ok: true };
 }
 
+/**
+ * Records one Section 3 answer against the profile.
+ *
+ * Section 3 is optional and always was — the scorer treats an unanswered trait
+ * as unknown rather than as agreement, so skipping it costs you the sharper
+ * ranking and nothing else. What it must not cost is the answers themselves:
+ * both places a signed-in person can answer — the drip questions between cards,
+ * and the twelve at /questions — land here, so answering anywhere counts
+ * immediately instead of waiting for a trip through settings.
+ *
+ * Read-modify-write. Safe because both callers ask one question at a time, and
+ * the alternative — appending in SQL — could not replace a previous answer to
+ * the same question, which re-answering requires.
+ */
+export async function recordPsychAnswer(
+  questionId: string,
+  optionId: string,
+): Promise<{ ok: boolean; answeredIds: string[] }> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, answeredIds: [] };
+
+  // A server action is a public endpoint, so the question and the option are
+  // checked against the bank rather than trusted.
+  const incoming = sanitisePsychAnswers([{ questionId, optionId }]);
+  if (incoming.length === 0) return { ok: false, answeredIds: [] };
+
+  const { data: row, error: readError } = await supabase
+    .from('profiles')
+    .select('psych_answers')
+    .eq('id', auth.user.id)
+    .maybeSingle();
+  if (readError || !row) return { ok: false, answeredIds: [] };
+
+  const existing = sanitisePsychAnswers(row.psych_answers);
+  const merged = mergePsychAnswers(existing, incoming);
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ psych_answers: merged })
+    .eq('id', auth.user.id);
+  if (error) {
+    console.error('[settings] psych answer failed', error.message);
+    return { ok: false, answeredIds: existing.map((a) => a.questionId) };
+  }
+
+  revalidatePath('/explore');
+  return { ok: true, answeredIds: merged.map((a) => a.questionId) };
+}
+
 export async function unblock(blockedId: string): Promise<Result> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();

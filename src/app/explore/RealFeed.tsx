@@ -9,7 +9,8 @@ import {
   type PsychQuestion,
 } from '@/lib/psych/psych-bank.ts';
 import SafetyMenu from '../SafetyMenu.tsx';
-import { loadMore, recordPsychAnswer, recordVerdict, undoLastPass } from './actions.ts';
+import { recordPsychAnswer } from '../settings/actions.ts';
+import { loadMore, recordVerdict, undoLastPass } from './actions.ts';
 
 /**
  * Explore, over real accounts.
@@ -249,16 +250,22 @@ export default function RealFeed({
       )}
       {undoError && <p className="foot">{undoError}</p>}
 
+      {/* Skipping Section 3 costs sharper ranking and nothing else — everyone
+          above is ranked either way, on food, intent and the gates. This says so
+          rather than letting a feed of scoreless cards imply the app is broken,
+          and offers the twelve to anyone who would rather not wait to be asked
+          four cards at a time. */}
       {progress.done === 0 ? (
         <p className="foot">
-          Half of every score is psychological compatibility, and you have not answered those
-          questions yet — so these are food and intent only. One question appears every few
-          cards.
+          These are ranked on food and intent only — the other half of the score is
+          psychological, and you have not answered those yet. A question appears every few
+          cards, or <Link href="/questions">answer twelve now</Link>.
         </p>
       ) : progress.done < progress.total ? (
         <p className="foot">
-          {progress.done} of {progress.total} personality questions answered. The rest arrive as
-          you swipe, and each one sharpens these scores.
+          {progress.done} of {progress.total} personality questions answered, and each one
+          sharpens these. The rest arrive as you swipe, or{' '}
+          <Link href="/questions">finish them now</Link>.
         </p>
       ) : (
         <p className="foot">All twelve answered — these scores use everything we have.</p>

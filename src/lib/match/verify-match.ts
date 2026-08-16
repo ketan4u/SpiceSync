@@ -267,6 +267,28 @@ console.log('\n4. EMPTY PROFILES DO NOT MANUFACTURE AGREEMENT');
   check('two unanswered psych profiles score neutral, not high',
     Math.abs(components.psych - 0.5) < 0.01,
     `psych component ${components.psych.toFixed(3)} (silence is not agreement)`);
+
+  // Section 3 is optional, and optional has to mean it. Skipping it costs the
+  // sharper ranking and NOTHING else: the same people are permissible, they are
+  // still ordered, and they still arrive with something to say. A feed that
+  // emptied itself until someone finished a personality test would be holding
+  // the product hostage to the least important half of it.
+  const pool = Array.from({ length: 40 }, (_, i) =>
+    makeProfile(`s${i}`, i * 613 + 5, { gender: 'man', seeking: ['woman'] }),
+  );
+  const answered = makeProfile('me3', 777, { gender: 'woman', seeking: ['man'], age: 28, ageMin: 21, ageMax: 45 });
+  const skipped = { ...answered, psych: scorePsych([]) };
+
+  const withAnswers = rankFor(answered, pool);
+  const without = rankFor(skipped, pool);
+
+  check('skipping Section 3 does not empty the feed',
+    without.matches.length === withAnswers.matches.length && without.matches.length > 0,
+    `${without.matches.length} shown with no answers vs ${withAnswers.matches.length} with all twelve`);
+
+  check('skipping Section 3 still leaves something to say',
+    without.matches.every((m) => m.chips.length > 0),
+    `${without.matches.filter((m) => m.chips.length > 0).length}/${without.matches.length} cards carry chips from food and intent alone`);
 }
 
 console.log('\n5. COLD START — Explore must not be empty on launch day');

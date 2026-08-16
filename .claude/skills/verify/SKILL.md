@@ -1,12 +1,12 @@
 ---
 name: verify
-description: Run and interpret SpiceSync's verification suites. Use before committing changes to the quiz engine, the food catalog, the psych bank, or the quiz flow — and whenever a check fails and its meaning is not obvious. Explains what each of the 88 checks protects and what a failure actually indicates.
+description: Run and interpret SpiceSync's verification suites. Use before committing changes to the quiz engine, the food catalog, the psych bank, or the quiz flow — and whenever a check fails and its meaning is not obvious. Explains what each of the 90 checks protects and what a failure actually indicates.
 ---
 
 # Verifying SpiceSync
 
 ```bash
-npm run verify          # all four suites, 88 checks
+npm run verify          # all four suites, 90 checks
 npm run verify:quiz     # the estimator
 npm run verify:flow     # the user journey
 npm run verify:match    # the scorer
@@ -44,9 +44,14 @@ taps still renders something · same seed reproduces.
 
 Gates are absolute and cannot be outweighed by a good score · `score(a,b)` equals
 `score(b,a)` · a twin outranks an opposite · two unanswered psych profiles score
-neutral rather than high · Explore is non-empty at pool sizes 4 through 200 ·
-a thin pool hides the number instead of inventing one · every surfaced match
-carries at least two chips · the distance opt-in behaves as the brief describes.
+neutral rather than high · skipping Section 3 shows the same people, in order,
+still carrying chips · Explore is non-empty at pool sizes 4 through 200 · a thin
+pool hides the number instead of inventing one · every surfaced match carries at
+least two chips · the distance opt-in behaves as the brief describes.
+
+**Skipping Section 3 empties the feed.** Something started treating an
+unanswered trait as a filter rather than as unknown. Section 3 is optional by
+design: it sharpens the ranking and must never decide who is permissible.
 
 **Score symmetry fails.** Something in the scorer reads one side only. Asymmetric
 preferences (diet tolerance) must be resolved with `min`, not by returning a

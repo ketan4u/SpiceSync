@@ -2,10 +2,6 @@
 
 import { createClient } from '../../lib/supabase/server.ts';
 import { getFeed, type FeedCard } from '../../lib/match/pool.ts';
-import {
-  mergePsychAnswers,
-  sanitisePsychAnswers,
-} from '../../lib/psych/psych-bank.ts';
 
 /**
  * Records a like or a pass.
@@ -75,55 +71,6 @@ export async function undoLastPass(): Promise<
   }
 
   return { ok: true, restoredId: data as string };
-}
-
-/**
- * Records one drip question, answered between cards in the feed.
- *
- * The brief asks for Section 3 to be fillable "through prompts shown while
- * swiping", and until now only the signed-out demo did that — it wrote to
- * localStorage, which a signed-in person's matching never reads. So this writes
- * to the profile, through the ordinary client, so RLS is what decides whose row
- * is touched.
- *
- * Read-modify-write, which is safe because there is only ever one question on
- * screen and the feed blocks while this is in flight. The alternative — a jsonb
- * append in SQL — cannot drop a previous answer to the same question, and
- * re-answering has to be possible.
- */
-export async function recordPsychAnswer(
-  questionId: string,
-  optionId: string,
-): Promise<{ ok: boolean; answeredIds: string[] }> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return { ok: false, answeredIds: [] };
-
-  // A server action is a public endpoint, so the question and the option are
-  // checked against the bank rather than trusted.
-  const incoming = sanitisePsychAnswers([{ questionId, optionId }]);
-  if (incoming.length === 0) return { ok: false, answeredIds: [] };
-
-  const { data: row, error: readError } = await supabase
-    .from('profiles')
-    .select('psych_answers')
-    .eq('id', auth.user.id)
-    .maybeSingle();
-  if (readError || !row) return { ok: false, answeredIds: [] };
-
-  const existing = sanitisePsychAnswers(row.psych_answers);
-  const merged = mergePsychAnswers(existing, incoming);
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({ psych_answers: merged })
-    .eq('id', auth.user.id);
-  if (error) {
-    console.error('[explore] psych answer failed', error.message);
-    return { ok: false, answeredIds: existing.map((a) => a.questionId) };
-  }
-
-  return { ok: true, answeredIds: merged.map((a) => a.questionId) };
 }
 
 export async function loadMore(): Promise<FeedCard[]> {
