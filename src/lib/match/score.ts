@@ -375,6 +375,54 @@ export interface RankResult {
 }
 
 /**
+ * Why a feed came back empty.
+ *
+ * An empty feed has several very different causes and they looked identical on
+ * screen — "Nobody here yet", whether nobody had signed up or everyone had and
+ * none of them was rankable. Migration 0009 wiped every taste vector, which
+ * drops its owner out of every pool until they retake Section 2, and nothing
+ * distinguished that from an empty city.
+ *
+ * Pure, and here rather than in `pool.ts`, so the harness can hold it to the
+ * rule below without a database.
+ *
+ * WHAT THIS MAY NOT SAY. Only the state of the app and the viewer's OWN
+ * settings. In a pool of two, "ruled out by a dealbreaker" or "by gender" is a
+ * fact about the only other account, so `widen` names age and distance and
+ * nothing else — those are the viewer's own filters, adjustable in settings.
+ * Counts stay in the server log.
+ */
+export type FeedDiagnosis = 'no-candidates' | 'awaiting-quiz' | 'all-judged' | 'filtered';
+
+export interface EmptyFeedDiagnosis {
+  diagnosis: FeedDiagnosis;
+  widen: Array<'age' | 'distance'>;
+}
+
+export function diagnoseEmptyFeed(counts: {
+  /** Everyone with a finished profile, excluding the viewer. */
+  others: number;
+  /** Of those, everyone the viewer has not already judged or blocked. */
+  unjudged: number;
+  /** Of those, everyone with a taste vector to rank. */
+  rankable: number;
+  blocked: BlockedMatch[];
+}): EmptyFeedDiagnosis {
+  const reasons = new Set(counts.blocked.map((b) => b.blocked));
+  const widen: Array<'age' | 'distance'> = [];
+  if (reasons.has('age')) widen.push('age');
+  if (reasons.has('distance')) widen.push('distance');
+
+  const diagnosis: FeedDiagnosis =
+    counts.others === 0 ? 'no-candidates'
+      : counts.unjudged === 0 ? 'all-judged'
+        : counts.rankable === 0 ? 'awaiting-quiz'
+          : 'filtered';
+
+  return { diagnosis, widen };
+}
+
+/**
  * Rank a pool for one person.
  *
  * The displayed number is a 50/50 blend of absolute compatibility and rank

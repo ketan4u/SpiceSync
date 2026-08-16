@@ -17,13 +17,14 @@ import { PSYCH_BANK, scorePsych, type PsychAnswer } from '../psych/psych-bank.ts
 import {
   BANNER_THRESHOLD,
   MIN_POOL_FOR_SCORES,
+  diagnoseEmptyFeed,
   gateFor,
   rankFor,
   pairWeights,
   scorePair,
   whyChips,
 } from './score.ts';
-import type { Intent, MatchProfile } from './types.ts';
+import type { BlockedMatch, Intent, MatchProfile } from './types.ts';
 
 let failures = 0;
 function check(name: string, pass: boolean, detail: string) {
@@ -289,6 +290,35 @@ console.log('\n4. EMPTY PROFILES DO NOT MANUFACTURE AGREEMENT');
   check('skipping Section 3 still leaves something to say',
     without.matches.every((m) => m.chips.length > 0),
     `${without.matches.filter((m) => m.chips.length > 0).length}/${without.matches.length} cards carry chips from food and intent alone`);
+}
+
+console.log('\n4b. AN EMPTY FEED SAYS WHY');
+{
+  const gated: BlockedMatch[] = [
+    { profile: makeProfile('x', 3), blocked: 'age' },
+    { profile: makeProfile('y', 4), blocked: 'dealbreaker' },
+  ];
+
+  const cases: Array<[string, Parameters<typeof diagnoseEmptyFeed>[0], string]> = [
+    ['nobody has signed up', { others: 0, unjudged: 0, rankable: 0, blocked: [] }, 'no-candidates'],
+    ['everyone already judged', { others: 5, unjudged: 0, rankable: 0, blocked: [] }, 'all-judged'],
+    // The 0009 case: people are here, none of them has a taste vector.
+    ['nobody has taken the quiz', { others: 5, unjudged: 5, rankable: 0, blocked: [] }, 'awaiting-quiz'],
+    ['gates ruled everyone out', { others: 5, unjudged: 5, rankable: 5, blocked: gated }, 'filtered'],
+  ];
+
+  for (const [name, counts, expected] of cases) {
+    const { diagnosis } = diagnoseEmptyFeed(counts);
+    check(name, diagnosis === expected, `reads as "${diagnosis}"`);
+  }
+
+  // The privacy rule. Age and distance are the viewer's own settings; every
+  // other gate describes whoever else is in the pool, and in a pool of two that
+  // is one identifiable person.
+  const { widen } = diagnoseEmptyFeed({ others: 2, unjudged: 2, rankable: 2, blocked: gated });
+  check('an empty feed names only the viewer\'s own filters',
+    widen.every((w) => w === 'age' || w === 'distance') && widen.includes('age'),
+    `suggests widening [${widen.join(', ')}] and never says why anyone else was excluded`);
 }
 
 console.log('\n5. COLD START — Explore must not be empty on launch day');

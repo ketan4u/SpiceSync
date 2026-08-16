@@ -69,7 +69,7 @@ this product can ship), and any change to how axis estimates are transformed
 ## Verifying
 
 ```bash
-npm run verify        # 90 checks across four suites
+npm run verify        # 95 checks across four suites
 npm run lint          # ESLint — must be clean
 ```
 
@@ -213,6 +213,20 @@ exercises the actual estimator and scorer.
 Both halves of the score are now live. With no Section 3 answers the
 psychological component sits at a neutral 0.500 and only 11 of 16 cards can be
 explained; after the core twelve it reaches ~0.72 and every card carries chips.
+
+**An empty feed says which kind of empty it is.** Four causes used to render the
+same "Nobody here yet": nobody has signed up, everybody has signed up but nobody
+has a taste vector to rank, you have judged everyone already, or your own gates
+excluded the lot. The second is not hypothetical — migration 0009 wiped every
+taste vector, and until its owner retakes Section 2 they are dropped from every
+pool silently, which is indistinguishable from an empty city on screen.
+
+What the screen may say is deliberately narrow: the state of the app, and the
+viewer's *own* settings. `widen` names age and distance only — both adjustable in
+settings — because in a pool of two, "ruled out by a dealbreaker" or "by gender"
+is a fact about the one other account. The counts go to the server log instead.
+`diagnoseEmptyFeed` is pure and lives in `score.ts` rather than the server-only
+`pool.ts` so `verify:match` can hold it to that rule.
 
 **Section 3 is optional, and optional means it costs you nothing but sharpness.**
 Skipping it does not remove anyone from your feed: the gates are gender, age,

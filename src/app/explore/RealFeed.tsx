@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import type { FeedCard } from '@/lib/match/pool.ts';
+import type { FeedCard, FeedDiagnosis } from '@/lib/match/pool.ts';
 import {
   coreProgress,
   nextQuestion,
@@ -19,15 +19,67 @@ import { loadMore, recordVerdict, undoLastPass } from './actions.ts';
  * scoring, and nothing in this component has access to anyone's psych answers
  * or date of birth. It renders what it is given and reports verdicts back.
  */
+/**
+ * What an empty feed says, and why it is worth distinguishing.
+ *
+ * Every one of these used to read "Nobody here yet", which is only true for the
+ * first. The others are an app-wide problem, a spent deck, and the viewer's own
+ * filters — three different things to do about it, and telling someone to wait
+ * for their city to fill up is wrong advice for all three.
+ */
+const SWIPED_THROUGH = {
+  art: '🍽️',
+  title: 'That is everyone for now',
+  body: 'You have seen everyone who matches right now. New people appear as they join.',
+  showWiden: false,
+};
+
+function emptyState(diagnosis?: FeedDiagnosis) {
+  switch (diagnosis) {
+    case 'awaiting-quiz':
+      return {
+        art: '🌶️',
+        title: 'Nobody has a food identity yet',
+        body:
+          'There are people here, but none of them has finished the food quiz — and without it there is nothing to rank them on. They will appear as they take it.',
+        showWiden: false,
+      };
+    case 'all-judged':
+      return SWIPED_THROUGH;
+    case 'filtered':
+      return {
+        art: '🔍',
+        title: 'Nobody fits right now',
+        body:
+          'People are here and rankable, but none of them clears what you are looking for. Nothing is wrong with your profile.',
+        showWiden: true,
+      };
+    default:
+      return {
+        art: '🍽️',
+        title: 'Nobody here yet',
+        body:
+          'You are early. As people join your city they will show up here, ranked against your food identity.',
+        showWiden: false,
+      };
+  }
+}
+
 export default function RealFeed({
   initial,
   undo,
   answeredIds,
+  diagnosis,
+  widen = [],
 }: {
   initial: FeedCard[];
   undo: { hasPass: boolean; available: boolean };
   /** Section 3 questions already on this person's profile. */
   answeredIds: string[];
+  /** Why the server sent no cards, when it sent none. */
+  diagnosis?: FeedDiagnosis;
+  /** The viewer's own settings that are narrowing the pool. */
+  widen?: Array<'age' | 'distance'>;
 }) {
   const [cards, setCards] = useState(initial);
   const [undoState, setUndoState] = useState(undo);
@@ -38,9 +90,20 @@ export default function RealFeed({
   const [answered, setAnswered] = useState(answeredIds);
   const [drip, setDrip] = useState<PsychQuestion | null>(null);
   const [decided, setDecided] = useState(0);
+  const [emptyReason, setEmptyReason] = useState<{
+    diagnosis?: FeedDiagnosis;
+    widen: Array<'age' | 'distance'>;
+  }>({ diagnosis, widen });
 
   const current = cards[index];
   const progress = coreProgress(answered);
+
+  /** A reloaded deck brings its own reason for being empty. */
+  const apply = (feed: { cards: FeedCard[]; diagnosis?: FeedDiagnosis; widen?: Array<'age' | 'distance'> }) => {
+    setCards(feed.cards);
+    setEmptyReason({ diagnosis: feed.diagnosis, widen: feed.widen ?? [] });
+    return feed.cards;
+  };
 
   const decide = async (verdict: 'like' | 'pass') => {
     if (!current || pending) return;
@@ -78,7 +141,7 @@ export default function RealFeed({
     const result = await recordPsychAnswer(drip.id, optionId);
     if (result.ok) {
       setAnswered(result.answeredIds);
-      setCards(await loadMore());
+      apply(await loadMore());
       setIndex(0);
     }
     setDrip(null);
@@ -103,9 +166,9 @@ export default function RealFeed({
       setPending(false);
       return;
     }
-    const fresh = await loadMore();
+    const fresh = apply(await loadMore());
     const restored = fresh.find((c) => c.id === result.restoredId);
-    setCards(restored ? [restored, ...fresh.filter((c) => c.id !== restored.id)] : fresh);
+    if (restored) setCards([restored, ...fresh.filter((c) => c.id !== restored.id)]);
     setIndex(0);
     setUndoState({ hasPass: false, available: false });
     setPending(false);
@@ -159,15 +222,25 @@ export default function RealFeed({
   }
 
   if (!current) {
+    // `diagnosis` describes the deck the server built. Once the user has swiped
+    // through it, the reason they are looking at an empty screen is that they
+    // swiped through it — not whatever was true at page load.
+    const empty = cards.length === 0 ? emptyState(emptyReason.diagnosis) : SWIPED_THROUGH;
     return (
       <div className="empty">
-        <div className="empty-art" aria-hidden>🍽️</div>
-        <h2>{cards.length === 0 ? 'Nobody here yet' : 'That is everyone for now'}</h2>
-        <p>
-          {cards.length === 0
-            ? 'You are early. As people join your city they will show up here, ranked against your food identity.'
-            : 'You have seen everyone who matches right now. New people appear as they join.'}
-        </p>
+        <div className="empty-art" aria-hidden>{empty.art}</div>
+        <h2>{empty.title}</h2>
+        <p>{empty.body}</p>
+        {empty.showWiden && emptyReason.widen.length > 0 && (
+          <p className="foot">
+            {emptyReason.widen.includes('age') && emptyReason.widen.includes('distance')
+              ? 'Widening your age range, or opting into matches further away, would take in more people.'
+              : emptyReason.widen.includes('age')
+                ? 'Widening your age range would take in more people.'
+                : 'Opting into matches further away would take in more people.'}{' '}
+            <Link href="/settings">Change that</Link>
+          </p>
+        )}
         <Link href="/matches" className="btn btn-ghost" style={{ textDecoration: 'none' }}>
           See your matches
         </Link>

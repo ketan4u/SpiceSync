@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '../../lib/supabase/server.ts';
-import { getFeed, type FeedCard } from '../../lib/match/pool.ts';
+import { getFeed, type Feed } from '../../lib/match/pool.ts';
 
 /**
  * Records a like or a pass.
@@ -73,10 +73,17 @@ export async function undoLastPass(): Promise<
   return { ok: true, restoredId: data as string };
 }
 
-export async function loadMore(): Promise<FeedCard[]> {
+/**
+ * Rebuilds the deck.
+ *
+ * Returns the diagnosis alongside the cards, not just the cards: a reload that
+ * comes back empty needs to explain itself with the reason that is true *now*,
+ * and the one from page load may no longer be.
+ */
+export async function loadMore(): Promise<Pick<Feed, 'cards' | 'diagnosis' | 'widen'>> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return [];
-  const feed = await getFeed(auth.user.id);
-  return feed.cards;
+  if (!auth.user) return { cards: [] };
+  const { cards, diagnosis, widen } = await getFeed(auth.user.id);
+  return { cards, diagnosis, widen };
 }

@@ -41,7 +41,13 @@ export default async function ExplorePage() {
       {!signedIn || !feed ? (
         <ExploreFeed />
       ) : !feed.reason ? (
-        <RealFeed initial={feed.cards} undo={undo} answeredIds={answeredIds} />
+        <RealFeed
+          initial={feed.cards}
+          undo={undo}
+          answeredIds={answeredIds}
+          diagnosis={feed.diagnosis}
+          widen={feed.widen}
+        />
       ) : feed.reason === 'no-profile' ? (
         <>
           <h1>Finish your profile</h1>

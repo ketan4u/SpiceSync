@@ -4,8 +4,10 @@ import { createAdminClient } from '../supabase/admin.ts';
 import { sanitiseTags } from '../dealbreakers.ts';
 import { sanitisePsychAnswers, scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
 import type { TasteVector } from '../food/types.ts';
-import { rankFor } from './score.ts';
+import { diagnoseEmptyFeed, rankFor, type FeedDiagnosis } from './score.ts';
 import type { Intent, MatchProfile } from './types.ts';
+
+export type { FeedDiagnosis };
 
 /**
  * Builds and ranks the real feed.
@@ -89,6 +91,10 @@ export interface Feed {
   cards: FeedCard[];
   /** Set when the viewer has no profile or no quiz result to rank against. */
   reason?: 'no-profile' | 'no-quiz' | 'unavailable';
+  /** Why there are no cards. Absent whenever there are some. */
+  diagnosis?: FeedDiagnosis;
+  /** Settings of the VIEWER'S OWN that are doing the filtering, if any are. */
+  widen?: Array<'age' | 'distance'>;
 }
 
 export async function getFeed(userId: string, limit = 40): Promise<Feed> {
@@ -122,13 +128,41 @@ export async function getFeed(userId: string, limit = 40): Promise<Feed> {
     .is('suspended_at', null)
     .limit(500);
 
-  const candidates = (rows ?? [])
-    .filter((r) => !seen.has((r as ProfileRow).id))
+  // Kept as separate stages rather than one chain, because the count surviving
+  // each one is the diagnosis: everybody, minus the people you have judged,
+  // minus the people with no taste vector, minus the people your gates exclude.
+  const others = (rows ?? []).filter((r) => (r as ProfileRow).id !== userId);
+  const unjudged = others.filter((r) => !seen.has((r as ProfileRow).id));
+  const candidates = unjudged
     .map((r) => toMatchProfile(r as ProfileRow))
     .filter((p): p is MatchProfile => p !== null);
 
-  const { matches } = rankFor(me, candidates);
+  const { matches, blocked } = rankFor(me, candidates);
   const top = matches.slice(0, limit);
+
+  if (top.length === 0) {
+    const counts: Partial<Record<string, number>> = {};
+    for (const b of blocked) counts[b.blocked] = (counts[b.blocked] ?? 0) + 1;
+
+    // The numbers stay in the log rather than going to the screen. Aggregate
+    // gate counts over a pool of two are facts about one identifiable person.
+    console.info(
+      '[explore] empty feed for %s — %d others, %d unjudged, %d rankable, blocked: %o',
+      userId,
+      others.length,
+      unjudged.length,
+      candidates.length,
+      counts,
+    );
+
+    const { diagnosis, widen } = diagnoseEmptyFeed({
+      others: others.length,
+      unjudged: unjudged.length,
+      rankable: candidates.length,
+      blocked,
+    });
+    return { cards: [], diagnosis, ...(widen.length > 0 ? { widen } : {}) };
+  }
 
   const byId = new Map((rows ?? []).map((r) => [(r as ProfileRow).id, r as ProfileRow]));
 
