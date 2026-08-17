@@ -14,11 +14,18 @@ import type { ReportReason } from '../lib/safety-reasons.ts';
 type Result = { ok: boolean; error?: string };
 
 /**
- * Blocking also records a pass.
+ * Blocking records a block, and nothing else.
  *
- * Without it the block would hide them from the feed while leaving no verdict,
- * and any later change to how the pool is filtered could surface them again.
- * Two records, one intent.
+ * An earlier version also wrote a `pass`, on the reasoning that a second record
+ * made the intent survive any future change to how the pool is filtered. It did
+ * the opposite of what was wanted: the upsert OVERWROTE the blocker's existing
+ * verdict, so blocking somebody you had liked destroyed the like, and
+ * unblocking could not bring it back. A match ended permanently on an action
+ * the product describes as reversible.
+ *
+ * The `blocks` table already hides both people from each other, in both
+ * directions, in the feed and in matches — see `blockedEitherWay` in pool.ts.
+ * That is sufficient, and it is non-destructive.
  */
 export async function blockUser(blockedId: string): Promise<Result> {
   const supabase = await createClient();
@@ -34,13 +41,6 @@ export async function blockUser(blockedId: string): Promise<Result> {
     return { ok: false, error: 'Could not block. Try again.' };
   }
 
-  await supabase
-    .from('likes')
-    .upsert(
-      { liker_id: auth.user.id, liked_id: blockedId, verdict: 'pass' },
-      { onConflict: 'liker_id,liked_id' },
-    );
-
   return { ok: true };
 }
 
@@ -54,9 +54,12 @@ export async function unblockUser(blockedId: string): Promise<Result> {
     .delete()
     .eq('blocker_id', auth.user.id)
     .eq('blocked_id', blockedId);
-  if (error) return { ok: false, error: 'Could not unblock.' };
-  // The pass stays. Unblocking restores contact, not a fresh look at someone
-  // you already decided about.
+  if (error) {
+    console.error('[safety] unblock failed', error.message);
+    return { ok: false, error: 'Could not unblock.' };
+  }
+  // Whatever verdict existed before the block is still there, untouched, so
+  // unblocking restores the prior state — including a match, if there was one.
   return { ok: true };
 }
 

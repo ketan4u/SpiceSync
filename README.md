@@ -26,7 +26,8 @@ entire security boundary rather than a second line of defence. The app runs
 without any of it — sign-in reports that it is not connected rather than failing
 oddly.
 
-Apply both migrations in the Supabase SQL Editor, in order.
+Apply every file in `supabase/migrations/` in the Supabase SQL Editor, in
+filename order. Each one assumes the ones before it have run.
 
 **One Supabase setting is required for sign-in.** The default email template
 sends a magic link; this app uses a six-digit code, because on a phone a link
@@ -68,7 +69,7 @@ this product can ship), and any change to how axis estimates are transformed
 ## Verifying
 
 ```bash
-npm run verify        # 72 checks across four suites
+npm run verify        # 95 checks across four suites
 npm run lint          # ESLint — must be clean
 ```
 
@@ -96,6 +97,7 @@ Each of these caught a real bug during development. Please keep them green.
 ```
 src/lib/food/          the Section 2 engine
   food-catalog.ts        89 dishes, tagged along every axis the quiz measures
+  food-relationship.ts   Section 2b — what food MEANS to someone
   pair-generator.ts      calibration + adaptive pair selection
   score-taste.ts         choices -> taste vector -> display label
   pool-calibration.ts    GENERATED — see below
@@ -128,6 +130,30 @@ last dish standing is "your food". That is order-dependent and cannot produce th
 model underneath accumulates a 7-dimension vector. `verify:quiz` asserts the
 result is bit-identical under reordering, so if you change the estimator, keep
 it commutative.
+
+**Section 2 has two halves, and they do different jobs.** The photo taps measure
+*revealed* preference — everybody claims to love spicy food, and the taps find
+out. The six questions in `food-relationship.ts` measure what taps cannot reach:
+how central food is, what archetype someone is, and how much they need a partner
+to share it. Neither replaces the other, and four questions from the original
+draft were dropped precisely because they duplicated something already measured
+better elsewhere.
+
+**`setting` is stated, not probed.** Where someone eats is something people
+report accurately, and three of the six questions speak to it directly. Dropping
+it as a tap target did *not* measurably improve the other axes (spice recovery
+0.729 → 0.727) — the adaptive selector rarely chose it anyway — so the taps
+stayed at eight rounds rather than shrinking to six.
+
+**Food is weighted per pair, not globally.** `WEIGHTS` used to be a fixed
+0.4/0.4/0.2 for everyone, which over-weighted food for someone who told us it is
+not a compatibility test and under-weighted it for someone for whom it is
+everything. It now comes from the **average** of the two people's stated
+importance, clamped so neither half can vanish. Averaging is what preserves
+`score(a,b) === score(b,a)`; taking the stricter of the two would let one
+person's priorities govern someone else's feed. A large gap between the two
+becomes its own why-chip, because averaging alone would hide a real
+incompatibility behind a decent number.
 
 **Cuisine is declared, not inferred.** Eight rounds identify 1-of-9 cuisines only
 ~22% of the time, and spending more rounds on it does not help while costing real
@@ -188,6 +214,36 @@ Both halves of the score are now live. With no Section 3 answers the
 psychological component sits at a neutral 0.500 and only 11 of 16 cards can be
 explained; after the core twelve it reaches ~0.72 and every card carries chips.
 
+**An empty feed says which kind of empty it is.** Four causes used to render the
+same "Nobody here yet": nobody has signed up, everybody has signed up but nobody
+has a taste vector to rank, you have judged everyone already, or your own gates
+excluded the lot. The second is not hypothetical — migration 0009 wiped every
+taste vector, and until its owner retakes Section 2 they are dropped from every
+pool silently, which is indistinguishable from an empty city on screen.
+
+What the screen may say is deliberately narrow: the state of the app, and the
+viewer's *own* settings. `widen` names age and distance only — both adjustable in
+settings — because in a pool of two, "ruled out by a dealbreaker" or "by gender"
+is a fact about the one other account. The counts go to the server log instead.
+`diagnoseEmptyFeed` is pure and lives in `score.ts` rather than the server-only
+`pool.ts` so `verify:match` can hold it to that rule.
+
+**Section 3 is optional, and optional means it costs you nothing but sharpness.**
+Skipping it does not remove anyone from your feed: the gates are gender, age,
+intent and dealbreakers, and an unanswered trait is treated as unknown rather
+than as a filter. `verify:match` asserts that a profile with zero answers sees
+the same people, in the same order, still carrying chips from food and intent —
+so the feed can never quietly become a reward for finishing a personality test.
+What you lose is the number, since a thin psychological read leaves less to
+explain a score with, and a score with nothing behind it is not shown.
+
+It fills in three ways, all of which now reach the profile: the twelve at
+`/questions`, one question every fourth card in the feed, and the copy carried
+from the device at signup. Answering in the feed rebuilds the deck, because the
+answer changes the psychological half of every score below it and a feed that
+kept its old order would be showing a ranking the app no longer believes.
+Answers merge rather than overwrite, so no path deletes another's work.
+
 Accounts exist: email OTP sign-in, an 18+ gate enforced in the database as well
 as the UI, and onboarding that carries the quiz result and personality answers
 from the device into the profile.
@@ -196,7 +252,22 @@ Explore reads real accounts when you are signed in and onboarded, and falls back
 to the seeded demo otherwise, so the public quiz still leads somewhere. Likes
 persist, and a mutual like is a match.
 
-Blocking, reporting and unmatching work. A block hides both people from each
+A pass can be undone **once per calendar day**, restoring the most recently
+passed profile and showing them next. The allowance lives in the primary key of
+`pass_undos`, and the undo itself is one Postgres function, so two taps in
+flight cannot both succeed and nobody can spend an undo on a pass that turns out
+not to exist. "Today" is IST — the app is India-first, and a UTC day would reset
+at 05:30 where the users are.
+
+That function is the single sanctioned exception to the rule that likes cannot
+be deleted. It only ever removes the caller's own most recent pass.
+
+Blocking, reporting and unmatching work. A block writes only to `blocks` — an
+earlier version also stored a `pass`, which overwrote the blocker's existing
+verdict and so destroyed a like permanently, making a reversible-sounding action
+irreversible. The block table alone hides both people in both directions.
+
+ A block hides both people from each
 other — one-directional blocking is detectable by whoever is still being shown,
 which is worse than none. Reporting blocks as a side effect and says so before
 the tap. The blocked party cannot read the block: their RLS policy only matches
@@ -228,10 +299,42 @@ Retaking the quiz while signed in only updates the copy on the device, so
 settings offers to apply it. Without that, someone could retake the quiz, see a
 new food identity, and go on being matched on the old one indefinitely.
 
-Not built: a moderation UI (the queue is SQL for now), and selfie
-*verification* — photos upload but nothing checks them. The dealbreaker gate has
-nothing to act on because Section 1's non-negotiables are not collected yet.
-Dish art is emoji placeholder.
+Signing in lands on `/after-signin`, which decides where you belong: an address
+on the allowlist goes to moderation, a finished profile to Explore, anyone else
+to onboarding. Only the server knows enough to make that call, and hardcoding
+onboarding as the destination meant a moderator had to declare who they were
+looking for before they could read a report.
+
+`/admin` is the moderation queue. Access is an env allowlist — `ADMIN_EMAILS`,
+comma separated — rather than a column, so there is nothing in the database to
+escalate to and no code path in the app can grant it. Unset means nobody. Every
+server action re-checks it, because a server action is a public endpoint and
+guarding only the page would leave moderation one crafted request away from
+anyone. A non-admin gets a 404, not a refusal, so nobody learns the page exists.
+
+Suspending does two things and needs both: a column that takes the account out
+of every feed, and an auth ban that actually revokes sign-in — a flag on a
+profile row cannot stop somebody signing in. It is reversible, deliberately,
+because you are acting on one person's account over another person's word.
+Deleting an account is not available to moderators.
+
+Non-negotiables are collected in onboarding (skippable) and editable in
+settings, which makes the scorer's dealbreaker gate live. One vocabulary is read
+two ways — "I smoke" and "won't date someone who smokes" — because a
+non-negotiable is inert unless the other person declared the matching attribute.
+
+**Caste, religion and complexion are deliberately not in that vocabulary**, and
+`verify:match` asserts their absence so it cannot drift back in. Each would be
+trivial to add and each is standard on Indian matrimonial platforms; that is the
+reason to leave them out. A structured filter is not a neutral container — it is
+what makes sorting people by those categories fast, repeatable and normal. It is
+a product decision, not a technical limit. Overrule it knowingly.
+
+Not built: selfie *verification* — photos upload but nothing checks them. Dish
+art is emoji placeholder. Most of the brief's Section 1 — education, job,
+height, prompts, red flags, political views, past-relationship learnings — is
+still deferred, as is kundli matching and the settle-city question that goes
+with a marriage intention.
 
 **How the feed reads other people.** There is deliberately no cross-user read
 policy — through the ordinary client you can reach your own row and nothing

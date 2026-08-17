@@ -3,11 +3,17 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { isKnownCity } from '../../lib/cities.ts';
+import { sanitiseTags } from '../../lib/dealbreakers.ts';
 import { INTENTS, type Intent } from '../../lib/match/types.ts';
 import { createClient } from '../../lib/supabase/server.ts';
 import { createAdminClient } from '../../lib/supabase/admin.ts';
-import type { PsychAnswer } from '../../lib/psych/psych-bank.ts';
+import {
+  mergePsychAnswers,
+  sanitisePsychAnswers,
+  type PsychAnswer,
+} from '../../lib/psych/psych-bank.ts';
 import type { TasteVector } from '../../lib/food/types.ts';
+import { sanitiseFoodAnswers, type FoodAnswer } from '../../lib/food/food-relationship.ts';
 
 type Result = { ok: boolean; error?: string };
 
@@ -22,6 +28,8 @@ export async function updateProfile(payload: {
   openToDistance: boolean;
   ageMin: number;
   ageMax: number;
+  attributes: string[];
+  nonNegotiables: string[];
 }): Promise<Result> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -58,6 +66,8 @@ export async function updateProfile(payload: {
       open_to_distance: payload.openToDistance,
       age_min: ageMin,
       age_max: ageMax,
+      attributes: sanitiseTags(payload.attributes),
+      non_negotiables: sanitiseTags(payload.nonNegotiables),
     })
     .eq('id', auth.user.id);
 
@@ -83,6 +93,7 @@ export async function syncFromDevice(payload: {
   foodLabel?: string;
   representativeDish?: string;
   psychAnswers?: PsychAnswer[];
+  foodAnswers?: FoodAnswer[];
 }): Promise<Result> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
@@ -95,17 +106,89 @@ export async function syncFromDevice(payload: {
     update.declared_cuisines = payload.declaredCuisines ?? [];
     update.food_label = payload.foodLabel ?? null;
     update.representative_dish = payload.representativeDish ?? null;
+    update.food_answers = sanitiseFoodAnswers(payload.foodAnswers);
+    update.food_archetype = payload.taste.archetype ?? null;
+    update.food_weight = payload.taste.foodWeight ?? null;
   }
-  if (payload.psychAnswers && payload.psychAnswers.length > 0) {
-    update.psych_answers = payload.psychAnswers;
+  // Merged, not overwritten. The device holds whatever was answered at
+  // /questions; the profile also holds the drip questions answered in the feed,
+  // which never touch the device. Writing either one over the other silently
+  // deletes real answers — and the ones lost would be the hardest to re-earn,
+  // because a drip question only comes back around every fourth card.
+  const incoming = sanitisePsychAnswers(payload.psychAnswers);
+  if (incoming.length > 0) {
+    const { data: row } = await supabase
+      .from('profiles')
+      .select('psych_answers')
+      .eq('id', auth.user.id)
+      .maybeSingle();
+    update.psych_answers = mergePsychAnswers(sanitisePsychAnswers(row?.psych_answers), incoming);
   }
   if (Object.keys(update).length === 0) return { ok: false, error: 'Nothing to sync.' };
 
   const { error } = await supabase.from('profiles').update(update).eq('id', auth.user.id);
-  if (error) return { ok: false, error: 'Could not sync.' };
+  if (error) {
+    console.error('[settings] sync failed', error.message);
+    // A missing column means an unapplied migration, not something the user did
+    // wrong. Saying "could not sync" sends them looking at their answers.
+    if (/column .* does not exist|schema cache/i.test(error.message)) {
+      return { ok: false, error: 'The database is missing a migration. Apply supabase/migrations and try again.' };
+    }
+    return { ok: false, error: 'Could not sync. Try again.' };
+  }
   revalidatePath('/settings');
   revalidatePath('/explore');
   return { ok: true };
+}
+
+/**
+ * Records one Section 3 answer against the profile.
+ *
+ * Section 3 is optional and always was — the scorer treats an unanswered trait
+ * as unknown rather than as agreement, so skipping it costs you the sharper
+ * ranking and nothing else. What it must not cost is the answers themselves:
+ * both places a signed-in person can answer — the drip questions between cards,
+ * and the twelve at /questions — land here, so answering anywhere counts
+ * immediately instead of waiting for a trip through settings.
+ *
+ * Read-modify-write. Safe because both callers ask one question at a time, and
+ * the alternative — appending in SQL — could not replace a previous answer to
+ * the same question, which re-answering requires.
+ */
+export async function recordPsychAnswer(
+  questionId: string,
+  optionId: string,
+): Promise<{ ok: boolean; answeredIds: string[] }> {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, answeredIds: [] };
+
+  // A server action is a public endpoint, so the question and the option are
+  // checked against the bank rather than trusted.
+  const incoming = sanitisePsychAnswers([{ questionId, optionId }]);
+  if (incoming.length === 0) return { ok: false, answeredIds: [] };
+
+  const { data: row, error: readError } = await supabase
+    .from('profiles')
+    .select('psych_answers')
+    .eq('id', auth.user.id)
+    .maybeSingle();
+  if (readError || !row) return { ok: false, answeredIds: [] };
+
+  const existing = sanitisePsychAnswers(row.psych_answers);
+  const merged = mergePsychAnswers(existing, incoming);
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ psych_answers: merged })
+    .eq('id', auth.user.id);
+  if (error) {
+    console.error('[settings] psych answer failed', error.message);
+    return { ok: false, answeredIds: existing.map((a) => a.questionId) };
+  }
+
+  revalidatePath('/explore');
+  return { ok: true, answeredIds: merged.map((a) => a.questionId) };
 }
 
 export async function unblock(blockedId: string): Promise<Result> {
@@ -117,7 +200,10 @@ export async function unblock(blockedId: string): Promise<Result> {
     .delete()
     .eq('blocker_id', auth.user.id)
     .eq('blocked_id', blockedId);
-  if (error) return { ok: false, error: 'Could not unblock.' };
+  if (error) {
+    console.error('[settings] unblock failed', error.message);
+    return { ok: false, error: 'Could not unblock.' };
+  }
   revalidatePath('/settings');
   return { ok: true };
 }

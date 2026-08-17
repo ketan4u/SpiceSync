@@ -10,16 +10,21 @@
 import { getItem } from '../food/food-catalog.ts';
 import { DEFAULT_ROUNDS, mulberry32, nextPair, representativeItem } from '../food/pair-generator.ts';
 import { applyChoice, createAccumulator, finalise } from '../food/score-taste.ts';
+import { FOOD_QUESTIONS, type FoodAnswer } from '../food/food-relationship.ts';
 import { CONTINUOUS_AXES, DIET_BAND_ORDER, type ContinuousAxis, type Cuisine, type FoodItem } from '../food/types.ts';
+import { DEALBREAKERS, sanitiseTags } from '../dealbreakers.ts';
 import { PSYCH_BANK, scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
 import {
   BANNER_THRESHOLD,
   MIN_POOL_FOR_SCORES,
+  diagnoseEmptyFeed,
   gateFor,
   rankFor,
+  pairWeights,
   scorePair,
+  whyChips,
 } from './score.ts';
-import type { Intent, MatchProfile } from './types.ts';
+import type { BlockedMatch, Intent, MatchProfile } from './types.ts';
 
 let failures = 0;
 function check(name: string, pass: boolean, detail: string) {
@@ -53,6 +58,11 @@ function makeProfile(id: string, seed: number, over: Partial<MatchProfile> = {})
     applyChoice(acc, { round, winnerId: winner.id, loserId: loser.id, probing: pair.probing }, winner, loser);
   }
 
+  const foodAnswers: FoodAnswer[] = FOOD_QUESTIONS.map((q) => ({
+    questionId: q.id,
+    optionId: q.options[Math.floor(rng() * q.options.length)].id,
+  }));
+
   const answers: PsychAnswer[] = PSYCH_BANK.filter((q) => q.tier === 'core').map((q) => ({
     questionId: q.id,
     optionId: q.options[Math.floor(rng() * q.options.length)].id,
@@ -69,7 +79,7 @@ function makeProfile(id: string, seed: number, over: Partial<MatchProfile> = {})
     city: 'bangalore',
     intents: ['long_term'],
     openToDistance: false,
-    taste: finalise(acc),
+    taste: finalise(acc, foodAnswers),
     representativeDish: representativeItem(acc, getItem)?.name,
     psych: scorePsych(answers),
     nonNegotiables: [],
@@ -136,6 +146,70 @@ console.log('\n1. GATES ARE ABSOLUTE');
     'no amount of compatibility overrides a gate');
 }
 
+console.log('\n1b. THE REAL DEALBREAKER VOCABULARY');
+{
+  check('vocabulary is populated', DEALBREAKERS.length >= 8,
+    `${DEALBREAKERS.length} tags, each with a self and an avoid phrasing`);
+
+  const bothPhrasings = DEALBREAKERS.every((d) => d.selfLabel && d.avoidLabel && d.id);
+  check('every tag reads both ways', bothPhrasings,
+    'a tag with only one phrasing cannot be collected on both sides');
+
+  // The categories this product will not sort people by. Their absence is a
+  // decision, so it is asserted rather than left to memory.
+  const excluded = ['caste', 'religion', 'skin', 'complexion', 'community', 'gotra'];
+  const found = DEALBREAKERS.filter((d) =>
+    excluded.some((e) => `${d.id} ${d.selfLabel} ${d.avoidLabel}`.toLowerCase().includes(e)),
+  );
+  check('no caste, religion or complexion filters', found.length === 0,
+    found.length ? found.map((d) => d.id).join(', ') : 'deliberately absent');
+
+  check('unknown tags are dropped', sanitiseTags(['smokes', 'caste_x', 42, 'smokes']).join() === 'smokes',
+    'sanitiseTags keeps known ids only, and de-duplicates');
+
+  // End to end, with a real tag rather than an invented one.
+  const smoker = makeProfile('s1', 41, { gender: 'man', seeking: ['woman'], attributes: sanitiseTags(['smokes']) });
+  const avoider = makeProfile('s2', 42, { gender: 'woman', seeking: ['man'], nonNegotiables: sanitiseTags(['smokes']) });
+  check('a real non-negotiable blocks a real attribute',
+    gateFor(avoider, smoker) === 'dealbreaker' && gateFor(smoker, avoider) === 'dealbreaker',
+    'blocked in both directions');
+
+  const nonSmoker = makeProfile('s3', 43, { gender: 'man', seeking: ['woman'], attributes: [] });
+  check('an undeclared attribute does not block', gateFor(avoider, nonSmoker) === null,
+    'a non-negotiable is inert unless the other side declared it — which is why both are asked');
+}
+
+console.log('\n1c. PER-PAIR FOOD WEIGHTING');
+{
+  const heavy = makeProfile('h', 61, { gender: 'man', seeking: ['woman'] });
+  const light = makeProfile('l', 62, { gender: 'woman', seeking: ['man'] });
+  heavy.taste = { ...heavy.taste, foodWeight: 0.9 };
+  light.taste = { ...light.taste, foodWeight: 0.12 };
+
+  const w = pairWeights(heavy, light);
+  const wReverse = pairWeights(light, heavy);
+  check('weighting is symmetric', Math.abs(w.food - wReverse.food) < 1e-12,
+    `food ${w.food.toFixed(3)} either way`);
+  check('weights sum to one', Math.abs(w.food + w.psych + w.profile - 1) < 1e-12,
+    `${w.food.toFixed(2)} food · ${w.psych.toFixed(2)} psych · ${w.profile.toFixed(2)} profile`);
+
+  const bothHeavy = pairWeights(heavy, { ...heavy, id: 'h2' });
+  const bothLight = pairWeights(light, { ...light, id: 'l2' });
+  check('caring more about food weights it more',
+    bothHeavy.food > w.food && w.food > bothLight.food,
+    `${bothLight.food.toFixed(2)} < ${w.food.toFixed(2)} < ${bothHeavy.food.toFixed(2)}`);
+
+  // Neither half may be squeezed out, however emphatically someone answered.
+  check('neither half can vanish',
+    bothHeavy.psych >= 0.15 && bothLight.food >= 0.15,
+    `psych floors at ${bothHeavy.psych.toFixed(2)}, food at ${bothLight.food.toFixed(2)}`);
+
+  const chips = whyChips(heavy, light, 6);
+  check('a large gap in food importance is said out loud',
+    chips.some((c) => c.includes('food matters much more')),
+    'averaging alone would hide a real incompatibility');
+}
+
 console.log('\n2. SYMMETRY');
 {
   let worst = 0;
@@ -194,6 +268,57 @@ console.log('\n4. EMPTY PROFILES DO NOT MANUFACTURE AGREEMENT');
   check('two unanswered psych profiles score neutral, not high',
     Math.abs(components.psych - 0.5) < 0.01,
     `psych component ${components.psych.toFixed(3)} (silence is not agreement)`);
+
+  // Section 3 is optional, and optional has to mean it. Skipping it costs the
+  // sharper ranking and NOTHING else: the same people are permissible, they are
+  // still ordered, and they still arrive with something to say. A feed that
+  // emptied itself until someone finished a personality test would be holding
+  // the product hostage to the least important half of it.
+  const pool = Array.from({ length: 40 }, (_, i) =>
+    makeProfile(`s${i}`, i * 613 + 5, { gender: 'man', seeking: ['woman'] }),
+  );
+  const answered = makeProfile('me3', 777, { gender: 'woman', seeking: ['man'], age: 28, ageMin: 21, ageMax: 45 });
+  const skipped = { ...answered, psych: scorePsych([]) };
+
+  const withAnswers = rankFor(answered, pool);
+  const without = rankFor(skipped, pool);
+
+  check('skipping Section 3 does not empty the feed',
+    without.matches.length === withAnswers.matches.length && without.matches.length > 0,
+    `${without.matches.length} shown with no answers vs ${withAnswers.matches.length} with all twelve`);
+
+  check('skipping Section 3 still leaves something to say',
+    without.matches.every((m) => m.chips.length > 0),
+    `${without.matches.filter((m) => m.chips.length > 0).length}/${without.matches.length} cards carry chips from food and intent alone`);
+}
+
+console.log('\n4b. AN EMPTY FEED SAYS WHY');
+{
+  const gated: BlockedMatch[] = [
+    { profile: makeProfile('x', 3), blocked: 'age' },
+    { profile: makeProfile('y', 4), blocked: 'dealbreaker' },
+  ];
+
+  const cases: Array<[string, Parameters<typeof diagnoseEmptyFeed>[0], string]> = [
+    ['nobody has signed up', { others: 0, unjudged: 0, rankable: 0, blocked: [] }, 'no-candidates'],
+    ['everyone already judged', { others: 5, unjudged: 0, rankable: 0, blocked: [] }, 'all-judged'],
+    // The 0009 case: people are here, none of them has a taste vector.
+    ['nobody has taken the quiz', { others: 5, unjudged: 5, rankable: 0, blocked: [] }, 'awaiting-quiz'],
+    ['gates ruled everyone out', { others: 5, unjudged: 5, rankable: 5, blocked: gated }, 'filtered'],
+  ];
+
+  for (const [name, counts, expected] of cases) {
+    const { diagnosis } = diagnoseEmptyFeed(counts);
+    check(name, diagnosis === expected, `reads as "${diagnosis}"`);
+  }
+
+  // The privacy rule. Age and distance are the viewer's own settings; every
+  // other gate describes whoever else is in the pool, and in a pool of two that
+  // is one identifiable person.
+  const { widen } = diagnoseEmptyFeed({ others: 2, unjudged: 2, rankable: 2, blocked: gated });
+  check('an empty feed names only the viewer\'s own filters',
+    widen.every((w) => w === 'age' || w === 'distance') && widen.includes('age'),
+    `suggests widening [${widen.join(', ')}] and never says why anyone else was excluded`);
 }
 
 console.log('\n5. COLD START — Explore must not be empty on launch day');

@@ -120,7 +120,7 @@ export default function SafetyMenu({
       >
         <span>
           <span className="option-title">Block {name}</span>
-          <span className="option-sub">Neither of you will see the other again.</span>
+          <span className="option-sub">Neither of you will see the other again. You can undo this in settings.</span>
         </span>
       </button>
       <button className="option" onClick={() => setMode('report')}>

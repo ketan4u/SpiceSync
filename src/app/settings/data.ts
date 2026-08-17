@@ -14,6 +14,8 @@ export interface EditableProfile {
   foodLabel: string | null;
   photoPaths: string[];
   psychAnswered: number;
+  attributes: string[];
+  nonNegotiables: string[];
 }
 
 export interface BlockedPerson {
@@ -26,7 +28,7 @@ export async function getEditableProfile(userId: string): Promise<EditableProfil
   if (!admin) return null;
   const { data } = await admin
     .from('profiles')
-    .select('name,gender,seeking,intents,city,open_to_distance,age_min,age_max,food_label,photo_paths,psych_answers')
+    .select('name,gender,seeking,intents,city,open_to_distance,age_min,age_max,food_label,photo_paths,psych_answers,attributes,non_negotiables')
     .eq('id', userId)
     .maybeSingle();
   if (!data) return null;
@@ -42,6 +44,8 @@ export async function getEditableProfile(userId: string): Promise<EditableProfil
     foodLabel: (data.food_label as string) ?? null,
     photoPaths: (data.photo_paths as string[]) ?? [],
     psychAnswered: ((data.psych_answers as unknown[]) ?? []).length,
+    attributes: (data.attributes as string[]) ?? [],
+    nonNegotiables: (data.non_negotiables as string[]) ?? [],
   };
 }
 

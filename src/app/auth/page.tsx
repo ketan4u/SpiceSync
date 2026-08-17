@@ -17,7 +17,7 @@ export default async function AuthPage({
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
-    if (data.user) redirect(next ?? '/onboarding');
+    if (data.user) redirect(next ?? '/after-signin');
   }
 
   return (
@@ -25,7 +25,7 @@ export default async function AuthPage({
       <AppHeader />
       <AuthForm
         phoneEnabled={process.env.AUTH_PHONE_ENABLED === 'true'}
-        next={next ?? '/onboarding'}
+        next={next ?? '/after-signin'}
         linkFailed={error === 'link'}
       />
     </main>

@@ -1,10 +1,13 @@
 import 'server-only';
 
 import { createAdminClient } from '../supabase/admin.ts';
-import { scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
+import { sanitiseTags } from '../dealbreakers.ts';
+import { sanitisePsychAnswers, scorePsych, type PsychAnswer } from '../psych/psych-bank.ts';
 import type { TasteVector } from '../food/types.ts';
-import { rankFor } from './score.ts';
+import { diagnoseEmptyFeed, rankFor, type FeedDiagnosis } from './score.ts';
 import type { Intent, MatchProfile } from './types.ts';
+
+export type { FeedDiagnosis };
 
 /**
  * Builds and ranks the real feed.
@@ -46,10 +49,12 @@ interface ProfileRow {
   representative_dish: string | null;
   psych_answers: PsychAnswer[] | null;
   photo_paths: string[] | null;
+  attributes: string[] | null;
+  non_negotiables: string[] | null;
 }
 
 const SELECT_COLUMNS =
-  'id,name,date_of_birth,gender,seeking,intents,city,open_to_distance,age_min,age_max,taste,food_label,representative_dish,psych_answers,photo_paths';
+  'id,name,date_of_birth,gender,seeking,intents,city,open_to_distance,age_min,age_max,taste,food_label,representative_dish,psych_answers,photo_paths,attributes,non_negotiables';
 
 function ageFrom(dob: string): number {
   const birth = new Date(`${dob}T00:00:00Z`);
@@ -77,10 +82,8 @@ function toMatchProfile(row: ProfileRow): MatchProfile | null {
     taste: row.taste,
     representativeDish: row.representative_dish ?? undefined,
     psych: scorePsych(row.psych_answers ?? []),
-    // Section 1's dealbreaker fields are not collected yet, so the gate has
-    // nothing to act on. Wiring them is what makes it meaningful.
-    nonNegotiables: [],
-    attributes: [],
+    nonNegotiables: sanitiseTags(row.non_negotiables),
+    attributes: sanitiseTags(row.attributes),
   };
 }
 
@@ -88,6 +91,10 @@ export interface Feed {
   cards: FeedCard[];
   /** Set when the viewer has no profile or no quiz result to rank against. */
   reason?: 'no-profile' | 'no-quiz' | 'unavailable';
+  /** Why there are no cards. Absent whenever there are some. */
+  diagnosis?: FeedDiagnosis;
+  /** Settings of the VIEWER'S OWN that are doing the filtering, if any are. */
+  widen?: Array<'age' | 'distance'>;
 }
 
 export async function getFeed(userId: string, limit = 40): Promise<Feed> {
@@ -118,15 +125,44 @@ export async function getFeed(userId: string, limit = 40): Promise<Feed> {
     .from('profiles')
     .select(SELECT_COLUMNS)
     .eq('onboarding_complete', true)
+    .is('suspended_at', null)
     .limit(500);
 
-  const candidates = (rows ?? [])
-    .filter((r) => !seen.has((r as ProfileRow).id))
+  // Kept as separate stages rather than one chain, because the count surviving
+  // each one is the diagnosis: everybody, minus the people you have judged,
+  // minus the people with no taste vector, minus the people your gates exclude.
+  const others = (rows ?? []).filter((r) => (r as ProfileRow).id !== userId);
+  const unjudged = others.filter((r) => !seen.has((r as ProfileRow).id));
+  const candidates = unjudged
     .map((r) => toMatchProfile(r as ProfileRow))
     .filter((p): p is MatchProfile => p !== null);
 
-  const { matches } = rankFor(me, candidates);
+  const { matches, blocked } = rankFor(me, candidates);
   const top = matches.slice(0, limit);
+
+  if (top.length === 0) {
+    const counts: Partial<Record<string, number>> = {};
+    for (const b of blocked) counts[b.blocked] = (counts[b.blocked] ?? 0) + 1;
+
+    // The numbers stay in the log rather than going to the screen. Aggregate
+    // gate counts over a pool of two are facts about one identifiable person.
+    console.info(
+      '[explore] empty feed for %s — %d others, %d unjudged, %d rankable, blocked: %o',
+      userId,
+      others.length,
+      unjudged.length,
+      candidates.length,
+      counts,
+    );
+
+    const { diagnosis, widen } = diagnoseEmptyFeed({
+      others: others.length,
+      unjudged: unjudged.length,
+      rankable: candidates.length,
+      blocked,
+    });
+    return { cards: [], diagnosis, ...(widen.length > 0 ? { widen } : {}) };
+  }
 
   const byId = new Map((rows ?? []).map((r) => [(r as ProfileRow).id, r as ProfileRow]));
 
@@ -195,6 +231,55 @@ async function signedUrls(paths: string[]): Promise<[string | null, string | nul
   return [signed[0], signed[1]];
 }
 
+export interface UndoState {
+  /** A pass exists that could be undone. */
+  hasPass: boolean;
+  /** The daily allowance has not been spent. */
+  available: boolean;
+}
+
+/**
+ * Whether the undo button should be offered.
+ *
+ * The database enforces the limit regardless; this only decides what the
+ * button says, so that pressing it is not the way someone finds out they
+ * already used it today.
+ */
+export async function getUndoState(userId: string): Promise<UndoState> {
+  const admin = createAdminClient();
+  if (!admin) return { hasPass: false, available: false };
+
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const [passes, used] = await Promise.all([
+    admin.from('likes').select('liked_id').eq('liker_id', userId).eq('verdict', 'pass').limit(1),
+    admin.from('pass_undos').select('used_on').eq('user_id', userId).eq('used_on', today).limit(1),
+  ]);
+
+  return {
+    hasPass: (passes.data ?? []).length > 0,
+    available: (used.data ?? []).length === 0,
+  };
+}
+
+/**
+ * Which Section 3 questions this person has already answered.
+ *
+ * Only the ids leave — the feed needs to know what to ask next, not what anyone
+ * replied. For a signed-in user the profile row is the source of truth for this,
+ * not the copy on the device: the drip questions are answered in the feed and
+ * write straight here.
+ */
+export async function getAnsweredPsychIds(userId: string): Promise<string[]> {
+  const admin = createAdminClient();
+  if (!admin) return [];
+  const { data } = await admin
+    .from('profiles')
+    .select('psych_answers')
+    .eq('id', userId)
+    .maybeSingle();
+  return sanitisePsychAnswers(data?.psych_answers).map((a) => a.questionId);
+}
+
 /** Someone you liked who had already liked you. */
 export interface MatchSummary {
   id: string;
@@ -231,6 +316,7 @@ export async function getMatches(userId: string): Promise<MatchSummary[]> {
   const { data: rows } = await admin
     .from('profiles')
     .select('id,name,food_label,photo_paths')
+    .is('suspended_at', null)
     .in('id', visible);
 
   return Promise.all(

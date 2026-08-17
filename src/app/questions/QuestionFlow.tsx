@@ -10,6 +10,7 @@ import {
   type PsychQuestion,
 } from '@/lib/psych/psych-bank.ts';
 import { savePsychAnswer, useHydrated, useStoredPsych } from '@/lib/quiz-storage.ts';
+import { recordPsychAnswer } from '../settings/actions.ts';
 
 /**
  * Section 3, the core twelve.
@@ -20,7 +21,7 @@ import { savePsychAnswer, useHydrated, useStoredPsych } from '@/lib/quiz-storage
  * them. Answers are scored the moment they are given, so leaving after four
  * still improves matching.
  */
-export default function QuestionFlow() {
+export default function QuestionFlow({ signedIn = false }: { signedIn?: boolean }) {
   const hydrated = useHydrated();
   const answers = useStoredPsych();
   const [index, setIndex] = useState(0);
@@ -31,10 +32,15 @@ export default function QuestionFlow() {
   const progress = coreProgress(answeredIds);
   const question: PsychQuestion | undefined = CORE_QUESTIONS[index];
 
-  if (!question) return <Done answers={answers} />;
+  if (!question) return <Done answers={answers} signedIn={signedIn} />;
 
   const answer = (optionId: string) => {
     savePsychAnswer({ questionId: question.id, optionId });
+    // Written one at a time rather than in a batch at the end, because the whole
+    // point of this section being skippable is that leaving after four still
+    // counts. Not awaited — the device copy is what the screen reads, and
+    // settings can still push it if a write here failed.
+    if (signedIn) void recordPsychAnswer(question.id, optionId);
     setIndex((i) => i + 1);
   };
 
@@ -88,7 +94,13 @@ export default function QuestionFlow() {
   );
 }
 
-function Done({ answers }: { answers: { questionId: string; optionId: string }[] }) {
+function Done({
+  answers,
+  signedIn,
+}: {
+  answers: { questionId: string; optionId: string }[];
+  signedIn: boolean;
+}) {
   const profile = scorePsych(answers);
   const chips = psychChips(profile, 4);
   const progress = coreProgress(answers.map((a) => a.questionId));
@@ -115,8 +127,9 @@ function Done({ answers }: { answers: { questionId: string; optionId: string }[]
       )}
 
       <p className="note">
-        These answers stay on your device for now. They are used to rank people and to explain
-        why — never shown to anyone else as raw answers.
+        {signedIn
+          ? 'Saved to your profile and already in use. They rank people and explain why — never shown to anyone else as raw answers.'
+          : 'These answers stay on your device until you make an account. They are used to rank people and to explain why — never shown to anyone else as raw answers.'}
       </p>
 
       <div className="stack">

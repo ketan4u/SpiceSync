@@ -1,10 +1,12 @@
 'use server';
 
 import { isKnownCity } from '../../lib/cities.ts';
+import { sanitiseTags } from '../../lib/dealbreakers.ts';
 import { INTENTS, type Intent } from '../../lib/match/types.ts';
 import { createClient } from '../../lib/supabase/server.ts';
-import type { PsychAnswer } from '../../lib/psych/psych-bank.ts';
+import { sanitisePsychAnswers, type PsychAnswer } from '../../lib/psych/psych-bank.ts';
 import type { TasteVector } from '../../lib/food/types.ts';
+import { sanitiseFoodAnswers, type FoodAnswer } from '../../lib/food/food-relationship.ts';
 
 /**
  * Completes a profile.
@@ -24,6 +26,8 @@ export interface OnboardingPayload {
   city: string;
   openToDistance: boolean;
   photoPaths: string[];
+  attributes?: string[];
+  nonNegotiables?: string[];
   // Carried from the device, taken before the account existed.
   dietBand?: string;
   declaredCuisines?: string[];
@@ -31,6 +35,7 @@ export interface OnboardingPayload {
   foodLabel?: string;
   representativeDish?: string;
   psychAnswers?: PsychAnswer[];
+  foodAnswers?: FoodAnswer[];
 }
 
 export type OnboardingResult =
@@ -100,12 +105,19 @@ export async function completeOnboarding(payload: OnboardingPayload): Promise<On
       city: payload.city,
       open_to_distance: Boolean(payload.openToDistance),
       photo_paths: photoPaths,
+      // Anything outside the known vocabulary is dropped rather than stored —
+      // an unrecognised tag would sit in the gate doing nothing, invisibly.
+      attributes: sanitiseTags(payload.attributes),
+      non_negotiables: sanitiseTags(payload.nonNegotiables),
       diet_band: payload.dietBand ?? null,
       declared_cuisines: payload.declaredCuisines ?? [],
       taste: payload.taste ?? null,
       food_label: payload.foodLabel ?? null,
       representative_dish: payload.representativeDish ?? null,
-      psych_answers: payload.psychAnswers ?? [],
+      psych_answers: sanitisePsychAnswers(payload.psychAnswers),
+      food_answers: sanitiseFoodAnswers(payload.foodAnswers),
+      food_archetype: payload.taste?.archetype ?? null,
+      food_weight: payload.taste?.foodWeight ?? null,
       onboarding_complete: true,
     },
     { onConflict: 'id' },

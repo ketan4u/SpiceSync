@@ -1,5 +1,6 @@
 import { CUISINE_LABELS, DIET_BAND_ORDER, type Cuisine, type DietBand } from '../food/types.ts';
 import { spiceLabel } from '../food/score-taste.ts';
+import { ARCHETYPE_LABELS, type Archetype } from '../food/food-relationship.ts';
 import { TRAITS, type Trait } from '../psych/psych-bank.ts';
 import {
   INTENT_LABELS,
@@ -250,6 +251,18 @@ export function whyChips(a: MatchProfile, b: MatchProfile, limit = 4): string[] 
     chips.push(`both ${spiceLabel(a.taste.spice).toLowerCase()}`);
   }
 
+  // Ordered before the rest: sharing an archetype is one of the most human
+  // things this card can say, and it was being crowded out by the four-chip cap.
+  if (a.taste.archetype && a.taste.archetype === b.taste.archetype) {
+    chips.push(`both ${ARCHETYPE_LABELS[a.taste.archetype as Archetype].toLowerCase()}s`);
+  }
+
+  // Not a compliment, and it belongs on the card anyway. One person for whom
+  // food is everything and one who is indifferent is a real incompatibility,
+  // and averaging the weights would otherwise hide it behind a decent number.
+  const importanceGap = Math.abs((a.taste.foodWeight ?? 0.5) - (b.taste.foodWeight ?? 0.5));
+  if (importanceGap > 0.45) chips.push('food matters much more to one of you');
+
   if (a.representativeDish && a.representativeDish === b.representativeDish) {
     chips.push(`you both picked ${a.representativeDish}`);
   }
@@ -300,7 +313,35 @@ export function whyChips(a: MatchProfile, b: MatchProfile, limit = 4): string[] 
 
 // --------------------------------------------------------------------- scorer
 
-export const WEIGHTS = { food: 0.4, psych: 0.4, profile: 0.2 } as const;
+/** Profile signals are a fixed share; food and psychology split the rest. */
+export const PROFILE_WEIGHT = 0.2;
+/**
+ * Food never falls below this share nor rises above it, whatever the two people
+ * asked for. Someone saying food is everything should not reduce psychological
+ * compatibility to noise, and someone saying it is irrelevant should not erase
+ * the half of the product that measures how they eat.
+ */
+export const FOOD_WEIGHT_FLOOR = 0.2;
+export const FOOD_WEIGHT_CEILING = 0.6;
+
+/**
+ * How heavily food counts for this pair.
+ *
+ * Averaged from both people's stated importance, which is what keeps the score
+ * symmetric — `score(a,b)` must equal `score(b,a)`, or two people comparing
+ * screens see different numbers for each other and one of them is being lied
+ * to. Taking the stricter of the two would instead let one person's priorities
+ * silently govern someone else's feed.
+ */
+export function pairWeights(a: MatchProfile, b: MatchProfile): {
+  food: number;
+  psych: number;
+  profile: number;
+} {
+  const average = ((a.taste.foodWeight ?? 0.5) + (b.taste.foodWeight ?? 0.5)) / 2;
+  const food = FOOD_WEIGHT_FLOOR + (FOOD_WEIGHT_CEILING - FOOD_WEIGHT_FLOOR) * average;
+  return { food, psych: 1 - PROFILE_WEIGHT - food, profile: PROFILE_WEIGHT };
+}
 
 export function scorePair(a: MatchProfile, b: MatchProfile): {
   raw: number;
@@ -311,10 +352,8 @@ export function scorePair(a: MatchProfile, b: MatchProfile): {
     psych: psychScore(a, b),
     profile: profileScore(a, b),
   };
-  const raw =
-    WEIGHTS.food * components.food +
-    WEIGHTS.psych * components.psych +
-    WEIGHTS.profile * components.profile;
+  const w = pairWeights(a, b);
+  const raw = w.food * components.food + w.psych * components.psych + w.profile * components.profile;
   return { raw: Math.min(1, Math.max(0, raw)), components };
 }
 
@@ -333,6 +372,54 @@ export interface RankResult {
   matches: ScoredMatch[];
   blocked: BlockedMatch[];
   poolSize: number;
+}
+
+/**
+ * Why a feed came back empty.
+ *
+ * An empty feed has several very different causes and they looked identical on
+ * screen — "Nobody here yet", whether nobody had signed up or everyone had and
+ * none of them was rankable. Migration 0009 wiped every taste vector, which
+ * drops its owner out of every pool until they retake Section 2, and nothing
+ * distinguished that from an empty city.
+ *
+ * Pure, and here rather than in `pool.ts`, so the harness can hold it to the
+ * rule below without a database.
+ *
+ * WHAT THIS MAY NOT SAY. Only the state of the app and the viewer's OWN
+ * settings. In a pool of two, "ruled out by a dealbreaker" or "by gender" is a
+ * fact about the only other account, so `widen` names age and distance and
+ * nothing else — those are the viewer's own filters, adjustable in settings.
+ * Counts stay in the server log.
+ */
+export type FeedDiagnosis = 'no-candidates' | 'awaiting-quiz' | 'all-judged' | 'filtered';
+
+export interface EmptyFeedDiagnosis {
+  diagnosis: FeedDiagnosis;
+  widen: Array<'age' | 'distance'>;
+}
+
+export function diagnoseEmptyFeed(counts: {
+  /** Everyone with a finished profile, excluding the viewer. */
+  others: number;
+  /** Of those, everyone the viewer has not already judged or blocked. */
+  unjudged: number;
+  /** Of those, everyone with a taste vector to rank. */
+  rankable: number;
+  blocked: BlockedMatch[];
+}): EmptyFeedDiagnosis {
+  const reasons = new Set(counts.blocked.map((b) => b.blocked));
+  const widen: Array<'age' | 'distance'> = [];
+  if (reasons.has('age')) widen.push('age');
+  if (reasons.has('distance')) widen.push('distance');
+
+  const diagnosis: FeedDiagnosis =
+    counts.others === 0 ? 'no-candidates'
+      : counts.unjudged === 0 ? 'all-judged'
+        : counts.rankable === 0 ? 'awaiting-quiz'
+          : 'filtered';
+
+  return { diagnosis, widen };
 }
 
 /**

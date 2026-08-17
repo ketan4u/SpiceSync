@@ -1,6 +1,7 @@
 import { getItem } from '../food/food-catalog.ts';
 import { DEFAULT_ROUNDS, mulberry32, nextPair, representativeItem } from '../food/pair-generator.ts';
 import { applyChoice, createAccumulator, finalise } from '../food/score-taste.ts';
+import { FOOD_QUESTIONS, type FoodAnswer } from '../food/food-relationship.ts';
 import {
   CONTINUOUS_AXES,
   DIET_BAND_ORDER,
@@ -148,6 +149,11 @@ export function seedProfiles(count = 64, seed = 20260807): SeedProfile[] {
     const acc = runQuizFor(rng);
     const rep = representativeItem(acc, getItem);
 
+    const foodAnswers: FoodAnswer[] = FOOD_QUESTIONS.map((q) => ({
+      questionId: q.id,
+      optionId: q.options[Math.floor(rng() * q.options.length)].id,
+    }));
+
     // Real answers to the real core questions, so the psych half of the score
     // is exercised rather than stubbed.
     const answers: PsychAnswer[] = PSYCH_BANK.filter((q) => q.tier === 'core').map((q) => ({
@@ -173,7 +179,7 @@ export function seedProfiles(count = 64, seed = 20260807): SeedProfile[] {
       city: CITIES[Math.floor(rng() * CITIES.length)],
       intents,
       openToDistance: rng() < 0.5,
-      taste: finalise(acc),
+      taste: finalise(acc, foodAnswers),
       representativeDish: rep?.name,
       dishEmoji: rep?.emoji ?? '🍽️',
       psych: scorePsych(answers),

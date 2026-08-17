@@ -80,7 +80,9 @@ people have eaten this*, not by how exotic it sounds to you.
 ```
 
 `setting` is `street` | `home` | `cafe` | `restaurant` — where the dish actually
-gets eaten, which correlates with spending and date-planning style.
+gets eaten. Note the quiz no longer *probes* this: a person's setting preference
+comes from the Section 2b questions, which people answer accurately. The tag is
+still used to pick the dish that represents someone, so keep it truthful.
 
 ## 4. Regenerate calibration, then verify
 
@@ -89,7 +91,7 @@ constants are now stale:
 
 ```bash
 npm run calibrate    # ~1 min; rewrites src/lib/food/pool-calibration.ts
-npm run verify       # must stay at 42/42
+npm run verify       # all 95 checks must stay green
 ```
 
 Commit the regenerated `pool-calibration.ts` alongside the catalog change. It is

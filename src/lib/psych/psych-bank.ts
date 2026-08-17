@@ -568,6 +568,49 @@ export function coreProgress(answeredIds: string[]): { done: number; total: numb
   };
 }
 
+export function isKnownPsychAnswer(a: PsychAnswer): boolean {
+  const q = QUESTIONS_BY_ID.get(a.questionId);
+  return Boolean(q && q.options.some((o) => o.id === a.optionId));
+}
+
+/**
+ * Drops anything not in the bank, and any second answer to the same question.
+ *
+ * Used on every write path. `scorePsych` already ignores what it does not
+ * recognise, so this is about what gets stored: an unknown id sitting in a
+ * profile is invisible weight nobody can explain later, and the drip questions
+ * arrive from a client that can send whatever it likes.
+ */
+export function sanitisePsychAnswers(raw: unknown): PsychAnswer[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: PsychAnswer[] = [];
+  for (const item of raw) {
+    const a = item as PsychAnswer;
+    if (!a || typeof a.questionId !== 'string' || typeof a.optionId !== 'string') continue;
+    if (seen.has(a.questionId) || !isKnownPsychAnswer(a)) continue;
+    seen.add(a.questionId);
+    out.push({ questionId: a.questionId, optionId: a.optionId });
+  }
+  return out;
+}
+
+/**
+ * Combines two sets of answers, with `incoming` winning any question both have.
+ *
+ * Answers now arrive from two places — the twelve on the device and the drip
+ * questions answered in the feed, which write straight to the profile. Either
+ * one replacing the other wholesale loses real answers, so both paths merge.
+ */
+export function mergePsychAnswers(
+  existing: PsychAnswer[],
+  incoming: PsychAnswer[],
+): PsychAnswer[] {
+  const byId = new Map(existing.map((a) => [a.questionId, a]));
+  for (const a of incoming) byId.set(a.questionId, a);
+  return [...byId.values()];
+}
+
 export function scorePsych(answers: PsychAnswer[]): PsychProfile {
   const sums = {} as Record<Trait, number>;
   const counts = {} as Record<Trait, number>;
