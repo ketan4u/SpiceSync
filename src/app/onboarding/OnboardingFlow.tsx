@@ -312,27 +312,38 @@ export default function OnboardingFlow({ userId }: { userId: string }) {
 
       {step === 'photos' && (
         <>
-          <p className="step-label">Step 6 of {STEPS.length}</p>
-          <h1>Two photos</h1>
-          <p className="lede">One of you, and one of a dish you love. Both are optional for now.</p>
+          <p className="step-label" style={{ color: 'var(--accent)' }}>Build Your Menu</p>
+          <h1>Upload Your Flavors</h1>
+          <p className="lede">A photo of you, plus one photo of your signature comfort food!</p>
 
           <div className="uploads">
-            <PhotoSlot label="You" done={Boolean(photoPaths[0])} disabled={uploading}
+            <PhotoSlot label="Your photo" done={Boolean(photoPaths[0])} disabled={uploading}
               onPick={(f) => upload(f, 0)} />
-            <PhotoSlot label="A dish you love" done={Boolean(photoPaths[1])} disabled={uploading}
+            <PhotoSlot label="Signature Dish" sublabel="Biryani, momos, tea…" done={Boolean(photoPaths[1])} disabled={uploading}
               onPick={(f) => upload(f, 1)} />
           </div>
 
-          <p className="consent">
-            Photos are stored privately and shown only to people you can match with. Nothing here
-            is verified yet, so treat other people&apos;s photos with the same caution you would
-            anywhere else.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+            {[
+              { label: 'YOUR NAME', placeholder: 'Aarav Mehta', value: name, onChange: setName },
+              { label: 'FAVORITE INDIAN COMFORT FOOD', placeholder: 'Paneer Butter Masala & Garlic Naan', value: '', onChange: () => {} },
+              { label: 'HOME STATE / REGIONAL CUISINE', placeholder: 'Gujarati / Mumbai Street Food', value: '', onChange: () => {} },
+            ].map(({ label, placeholder }) => (
+              <div key={label}>
+                <p className="step-label" style={{ margin: '0 0 4px', fontSize: 11, color: 'var(--ink)' }}>{label}</p>
+                <input className="text-input" placeholder={placeholder} style={{ marginBottom: 0 }} readOnly />
+              </div>
+            ))}
+          </div>
+
+          <p className="consent" style={{ marginTop: 16 }}>
+            Photos are stored privately and shown only to people you can match with.
           </p>
 
           {error && <p className="err">{error}</p>}
           <div className="spacer" />
-          <button className="btn" onClick={finish} disabled={pending || uploading}>
-            {pending ? 'Saving…' : 'Finish'}
+          <button className="btn" style={{ borderRadius: 16 }} onClick={finish} disabled={pending || uploading}>
+            {pending ? 'Saving…' : 'Bake Profile 🍽️'}
           </button>
           <button className="btn-text" style={{ margin: '0 auto', display: 'block' }} onClick={() => setStep('limits')}>
             Back
@@ -351,10 +362,10 @@ export default function OnboardingFlow({ userId }: { userId: string }) {
 }
 
 function PhotoSlot({
-  label, done, disabled, onPick,
-}: { label: string; done: boolean; disabled: boolean; onPick: (f: File) => void }) {
+  label, sublabel, done, disabled, onPick,
+}: { label: string; sublabel?: string; done: boolean; disabled: boolean; onPick: (f: File) => void }) {
   return (
-    <label className="upload" data-done={done}>
+    <label className="upload" data-done={done} style={sublabel ? { background: 'var(--accent-soft)' } : {}}>
       <input
         type="file"
         accept="image/*"
@@ -366,6 +377,7 @@ function PhotoSlot({
       />
       <span className="upload-art" aria-hidden>{done ? '✓' : '＋'}</span>
       <span className="upload-label">{label}</span>
+      {sublabel && <span className="upload-label" style={{ fontSize: 11, opacity: 0.7 }}>{sublabel}</span>}
     </label>
   );
 }

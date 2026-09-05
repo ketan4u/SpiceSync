@@ -208,11 +208,16 @@ export default function QuizFlow({ signedIn = false }: { signedIn?: boolean }) {
   if (step === 'diet') {
     return (
       <>
-        <p className="step-label">Step 1 of 3</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <p className="step-label" style={{ margin: 0, color: 'var(--accent)' }}>QUESTION 1 OF 5</p>
+          {dietBand && <p className="step-label" style={{ margin: 0, color: 'var(--ink-soft)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>0% Complete</p>}
+        </div>
+        <div style={{ height: 6, borderRadius: 100, background: 'var(--line)', marginBottom: 24, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: '0%', background: 'var(--accent)', borderRadius: 100 }} />
+        </div>
         <h1>First — how do you eat?</h1>
         <p className="lede">
-          This decides what we can put in front of you. Pick the one that is actually true, not the
-          one that sounds good.
+          This decides what we can put in front of you. Pick the one that is actually true.
         </p>
         <div style={{ marginTop: 22 }}>
           {DIET_BAND_ORDER.map((band) => (
@@ -234,12 +239,13 @@ export default function QuizFlow({ signedIn = false }: { signedIn?: boolean }) {
           ))}
         </div>
         <div className="spacer" />
-        <button className="btn" disabled={!dietBand} onClick={() => setStep('cuisine')}>
-          Continue
-        </button>
-        {dietBand && (
-          <p className="foot">{poolSize} dishes on your menu</p>
-        )}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => {}}>Back</button>
+          <button className="btn" style={{ flex: 1 }} disabled={!dietBand} onClick={() => setStep('cuisine')}>
+            Continue
+          </button>
+        </div>
+        {dietBand && <p className="foot">{poolSize} dishes on your menu</p>}
       </>
     );
   }
@@ -251,11 +257,16 @@ export default function QuizFlow({ signedIn = false }: { signedIn?: boolean }) {
 
     return (
       <>
-        <p className="step-label">Step 2 of 3</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <p className="step-label" style={{ margin: 0, color: 'var(--accent)' }}>QUESTION 2 OF 5</p>
+          <p className="step-label" style={{ margin: 0, color: 'var(--ink-soft)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>20% Complete</p>
+        </div>
+        <div style={{ height: 6, borderRadius: 100, background: 'var(--line)', marginBottom: 24, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: '20%', background: 'var(--accent)', borderRadius: 100 }} />
+        </div>
         <h1>What do you actually eat?</h1>
         <p className="lede">
-          Pick as many as are true. We ask this outright because it is the one thing people get
-          right about themselves — the quiz is for everything they don&apos;t.
+          Pick as many as are true. We ask this outright — the quiz is for everything you get wrong.
         </p>
         <div className="tiles" style={{ marginTop: 22 }}>
           {CUISINE_ORDER.map((c) => (
@@ -271,9 +282,12 @@ export default function QuizFlow({ signedIn = false }: { signedIn?: boolean }) {
           ))}
         </div>
         <div className="spacer" />
-        <button className="btn" disabled={cuisines.length === 0} onClick={startRounds}>
-          Start the quiz
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setStep('diet')}>Back</button>
+          <button className="btn" style={{ flex: 1 }} disabled={cuisines.length === 0} onClick={startRounds}>
+            Continue
+          </button>
+        </div>
         <button className="btn-text" style={{ margin: '4px auto 0', display: 'block' }} onClick={startRounds}>
           Skip — surprise me
         </button>
@@ -283,16 +297,15 @@ export default function QuizFlow({ signedIn = false }: { signedIn?: boolean }) {
 
   // --------------------------------------------------------------- rounds
   if (step === 'rounds' && pair) {
+    const pct = Math.round(((round - 1) / DEFAULT_ROUNDS) * 40) + 20;
     return (
       <>
-        <div className="progress" aria-label={`Round ${round} of ${DEFAULT_ROUNDS}`}>
-          {Array.from({ length: DEFAULT_ROUNDS }, (_, i) => (
-            <span
-              key={i}
-              className="pip"
-              data-state={i + 1 < round ? 'done' : i + 1 === round ? 'current' : 'todo'}
-            />
-          ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <p className="step-label" style={{ margin: 0, color: 'var(--accent)' }}>ROUND {round} OF {DEFAULT_ROUNDS}</p>
+          <p className="step-label" style={{ margin: 0, color: 'var(--ink-soft)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{pct}% Complete</p>
+        </div>
+        <div style={{ height: 6, borderRadius: 100, background: 'var(--line)', marginBottom: 22, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 100, transition: 'width 0.3s ease' }} />
         </div>
         <h2>Which one, right now?</h2>
         <p style={{ marginBottom: 20 }}>No overthinking. Go with your gut.</p>
@@ -484,13 +497,17 @@ function Result({
 
   return (
     <>
-      <p className="step-label">Your food identity</p>
+      <p className="step-label" style={{ color: 'var(--accent)', letterSpacing: '0.1em' }}>YOUR PROFILE</p>
       <div className="identity">
         <div className="identity-art" aria-hidden>
           {outcome.dishEmoji}
         </div>
         <div className="identity-label">{outcome.label}</div>
-        {outcome.dishName && <div className="identity-dish">The dish that gave you away: {outcome.dishName}</div>}
+        {outcome.dishName && (
+          <div className="identity-dish" style={{ color: 'var(--ink-soft)', marginBottom: 8 }}>
+            Complex, warming, and adventurous
+          </div>
+        )}
         {outcome.traits.length > 0 && (
           <div className="traits">
             {outcome.traits.map((t) => (
@@ -501,6 +518,14 @@ function Result({
           </div>
         )}
       </div>
+      {outcome.dishName && (
+        <div style={{ marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, marginBottom: 8 }}>Your culinary footprint:</h2>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--ink)', lineHeight: 1.6 }}>
+            The dish that gave you away: <strong>{outcome.dishName}</strong>
+          </p>
+        </div>
+      )}
 
       <div className="bars">
         {AXES.map(({ key, low, high }) => {

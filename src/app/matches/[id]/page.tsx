@@ -79,27 +79,28 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
   }));
 
   return (
-    <main className="shell">
-      <AppHeader />
-
-      <div className="thread-head">
-        <div className="match-photo">
+    <main className="shell" style={{ display: 'flex', flexDirection: 'column', padding: '0 0 0' }}>
+      {/* Chat header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px 12px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+        <Link href="/matches" style={{ width: 36, height: 36, borderRadius: 18, background: 'var(--ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 20, textDecoration: 'none', flexShrink: 0 }}>
+          ‹
+        </Link>
+        <div className="match-photo" style={{ width: 40, height: 40, flexShrink: 0 }}>
           {partner.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={partner.photoUrl} alt={partner.name} />
           ) : (
-            <span aria-hidden>{partner.name.charAt(0)}</span>
+            <span aria-hidden style={{ fontSize: 18 }}>{partner.name.charAt(0)}</span>
           )}
         </div>
-        <div>
-          <div className="option-title">{partner.name}</div>
-          {partner.foodLabel && <div className="option-sub">{partner.foodLabel}</div>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--ink)' }}>{partner.name}</div>
+          {partner.foodLabel && <div style={{ fontSize: 13, color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{partner.foodLabel}</div>}
         </div>
+        <SafetyMenu userId={partner.id} name={partner.name} canUnmatch />
       </div>
 
       <Thread me={auth.user.id} partner={partner} initial={initial} />
-
-      <SafetyMenu userId={partner.id} name={partner.name} canUnmatch />
     </main>
   );
 }

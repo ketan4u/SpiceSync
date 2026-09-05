@@ -35,7 +35,7 @@ export default async function ExplorePage() {
   }
 
   return (
-    <main className="shell">
+    <main className="shell shell-with-nav">
       <AppHeader />
 
       {!signedIn || !feed ? (

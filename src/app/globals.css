@@ -1,19 +1,21 @@
 /* SpiceSync — warm, food-forward, deliberately not the blue-gradient dating-app look. */
 
 :root {
-  --bg: #fffaf3;
+  --bg: #FCF8F2;
   --bg-elev: #ffffff;
-  --ink: #1c1411;
-  --ink-soft: #6b5b51;
+  --ink: #281715;
+  --ink-soft: #7A6866;
   --ink-faint: #9a8a80;
-  --line: #ece0d4;
-  --accent: #d9480f;
-  --accent-soft: #fdeee6;
+  --line: #E5DEC9;
+  --accent: #D96B27;
+  --accent-soft: #F7E6D8;
   --accent-ink: #ffffff;
   --green: #2f7a4f;
-  --radius: 18px;
-  --shadow: 0 1px 2px rgba(28, 20, 17, 0.05), 0 8px 24px rgba(28, 20, 17, 0.06);
-  --shadow-lift: 0 2px 4px rgba(28, 20, 17, 0.06), 0 16px 40px rgba(28, 20, 17, 0.12);
+  --splash-bg: #4A121A;
+  --logo-accent: #D96B27;
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(40, 23, 21, 0.05), 0 8px 24px rgba(40, 23, 21, 0.06);
+  --shadow-lift: 0 2px 4px rgba(40, 23, 21, 0.06), 0 16px 40px rgba(40, 23, 21, 0.12);
   color-scheme: light;
 }
 
@@ -25,10 +27,11 @@
     --ink-soft: #b6a598;
     --ink-faint: #8a7a6e;
     --line: #322a25;
-    --accent: #ff7a33;
+    --accent: #E07B3A;
     --accent-soft: #2a1c14;
     --accent-ink: #1a1006;
     --green: #5fca8f;
+    --splash-bg: #4A121A;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
     --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.5), 0 16px 40px rgba(0, 0, 0, 0.5);
     color-scheme: dark;
@@ -48,8 +51,7 @@ body {
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    sans-serif;
+  font-family: var(--font-body), ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   font-size: 16px;
   line-height: 1.5;
@@ -72,6 +74,7 @@ button {
 }
 
 .wordmark {
+  font-family: var(--font-display), ui-serif, serif;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -87,6 +90,7 @@ button {
 }
 
 h1 {
+  font-family: var(--font-display), ui-serif, serif;
   font-size: clamp(28px, 7vw, 38px);
   line-height: 1.12;
   letter-spacing: -0.03em;
@@ -95,11 +99,12 @@ h1 {
 }
 
 h2 {
+  font-family: var(--font-display), ui-serif, serif;
   font-size: 21px;
   line-height: 1.25;
   letter-spacing: -0.02em;
   margin: 0 0 6px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 p {
@@ -348,11 +353,12 @@ p {
 }
 
 .identity-label {
+  font-family: var(--font-display), ui-serif, serif;
   font-size: clamp(25px, 6.5vw, 32px);
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1.1;
-  color: var(--accent);
+  color: var(--ink);
   margin-bottom: 8px;
   text-wrap: balance;
 }
@@ -908,6 +914,55 @@ p {
   object-fit: cover;
 }
 
+/* --------------------------------------------------------- bottom nav */
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 100;
+}
+
+.bottom-nav-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  transition: color 0.12s ease;
+  cursor: pointer;
+}
+
+.bottom-nav-tab[data-active="true"] {
+  color: var(--accent);
+}
+
+.bottom-nav-tab-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.shell-with-nav {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
 /* ---------------------------------------------------------------------- nav */
 
 .nav {
@@ -1037,15 +1092,14 @@ p {
   align-self: flex-end;
   background: var(--accent);
   color: var(--accent-ink);
-  border-bottom-right-radius: 5px;
+  border-bottom-right-radius: 4px;
 }
 
 .bubble.theirs {
   align-self: flex-start;
-  background: var(--bg-elev);
-  border: 1px solid var(--line);
+  background: var(--accent-soft);
   color: var(--ink);
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 4px;
 }
 
 .composer {

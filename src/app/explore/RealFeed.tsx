@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import BottomNav from '../BottomNav.tsx';
 import type { FeedCard, FeedDiagnosis } from '@/lib/match/pool.ts';
 import {
   coreProgress,
@@ -176,16 +177,43 @@ export default function RealFeed({
 
   if (matched) {
     return (
-      <div className="empty">
-        <div className="empty-art" aria-hidden>🌶️</div>
-        <h2>You matched with {matched.name}</h2>
-        <p>You both said yes. That is the whole idea.</p>
-        <div className="stack">
-          <Link href="/matches" className="btn" style={{ textDecoration: 'none' }}>
-            See your matches
+      <div style={{
+        position: 'fixed', inset: 0, background: 'var(--splash-bg)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '32px 24px', zIndex: 200,
+      }}>
+        {/* Two overlapping portrait circles */}
+        <div style={{ display: 'flex', marginBottom: 24 }}>
+          <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'var(--accent-soft)', border: '3px solid var(--splash-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, zIndex: 1 }}>
+            👤
+          </div>
+          <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'var(--accent)', border: '3px solid var(--splash-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, marginLeft: -20 }}>
+            {matched.dishEmoji ?? '🍛'}
+          </div>
+        </div>
+
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px,8vw,40px)', color: '#fff', textAlign: 'center', margin: '0 0 12px' }}>
+          It&apos;s a Match!
+        </h1>
+        <p style={{ color: '#F7E6D8', textAlign: 'center', fontSize: 16, lineHeight: 1.6, marginBottom: 40 }}>
+          You and {matched.name} both liked each other.{'\n'}Start a conversation!
+        </p>
+
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Link
+            href="/matches"
+            className="btn"
+            style={{ textDecoration: 'none', borderRadius: 999, fontSize: 17, background: 'var(--accent)' }}
+          >
+            💬  Send a Message
           </Link>
-          <button className="btn btn-ghost" onClick={() => { setMatched(null); setIndex((i) => i + 1); }}>
-            Keep looking
+          <button
+            className="btn-text"
+            style={{ color: 'rgba(247,230,216,0.75)', margin: '0 auto' }}
+            onClick={() => { setMatched(null); setIndex((i) => i + 1); }}
+          >
+            Keep Exploring
           </button>
         </div>
       </div>
@@ -250,6 +278,7 @@ export default function RealFeed({
 
   return (
     <>
+      <BottomNav />
       <div className="feed-head">
         <span className="feed-count">{index + 1} of {cards.length}</span>
         <Link href="/matches" className="feed-mine">Matches</Link>

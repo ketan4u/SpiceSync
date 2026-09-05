@@ -128,17 +128,31 @@ export default function Thread({
 
       {error && <p className="err">{error}</p>}
 
-      <form className="composer" onSubmit={send}>
+      {error && <p className="err" style={{ padding: '0 20px', margin: 0 }}>{error}</p>}
+
+      <form className="composer" onSubmit={send} style={{ padding: '8px 16px 20px', borderTop: '1px solid var(--line)', background: 'var(--bg)' }}>
         <input
           className="text-input"
-          placeholder={`Message ${partner.name}`}
+          placeholder={`Message ${partner.name}…`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           maxLength={2000}
           aria-label={`Message ${partner.name}`}
+          style={{ marginBottom: 0, borderRadius: 20 }}
         />
-        <button className="btn" type="submit" disabled={sending || draft.trim().length === 0}>
-          {sending ? '…' : 'Send'}
+        <button
+          type="submit"
+          disabled={sending || draft.trim().length === 0}
+          style={{
+            width: 44, height: 44, borderRadius: 22, flexShrink: 0,
+            background: 'var(--accent)', border: 0, color: '#fff',
+            fontSize: 18, fontWeight: 700, cursor: 'pointer',
+            opacity: (sending || draft.trim().length === 0) ? 0.4 : 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          aria-label="Send message"
+        >
+          ↑
         </button>
       </form>
     </>
