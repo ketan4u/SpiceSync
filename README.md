@@ -4,7 +4,7 @@ A dating app for India, built around food — and, underneath that, around a
 psychological match. The original brief is in [`docs/brief.md`](docs/brief.md).
 
 The bet: people cannot articulate what they want from dating, but they can tap a
-photo of a dish. Section 2 turns eight taps into a taste vector; Section 3 turns
+photo of their favourite dish and answer some psychological questions. Section 2 turns these taps into a taste vector; Section 3 turns
 a dozen situational questions into a personality read; the match score weighs
 both and — crucially — **explains itself** rather than emitting a bare number.
 
